@@ -1,0 +1,14 @@
+{
+ "A_default": {},
+ "B_iou_cls": {"offset_iou": {"car": 0.29, "pedestrian": 0.21, "truck": 0.3, "bus": 0.53, "motorcycle": 0.2, "construction_vehicle": 0.15, "bicycle": 0.18, "trailer": 0.12}},
+ "C_vis3": {"offset_iou": {"car": 0.29, "pedestrian": 0.21, "truck": 0.3, "bus": 0.53, "motorcycle": 0.2, "construction_vehicle": 0.15, "bicycle": 0.18, "trailer": 0.12},
+            "min_visibility": 3},
+ "D_size60": {"offset_iou": {"car": 0.29, "pedestrian": 0.21, "truck": 0.3, "bus": 0.53, "motorcycle": 0.2, "construction_vehicle": 0.15, "bicycle": 0.18, "trailer": 0.12},
+              "min_visibility": 3, "no_match_min_height_px": 60, "missing_min_height_px": 60, "missing_conf": 0.7},
+ "E_night": {"offset_iou": {"car": 0.29, "pedestrian": 0.21, "truck": 0.3, "bus": 0.53, "motorcycle": 0.2, "construction_vehicle": 0.15, "bicycle": 0.18, "trailer": 0.12},
+             "min_visibility": 3, "no_match_min_height_px": 60, "missing_min_height_px": 60, "missing_conf": 0.7,
+             "skip_night": true},
+ "F_vis4": {"offset_iou": {"car": 0.29, "pedestrian": 0.21, "truck": 0.3, "bus": 0.53, "motorcycle": 0.2, "construction_vehicle": 0.15, "bicycle": 0.18, "trailer": 0.12},
+            "min_visibility": 4, "no_match_min_height_px": 60, "missing_min_height_px": 60, "missing_conf": 0.7,
+            "skip_night": true}
+}

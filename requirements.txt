@@ -1,0 +1,11 @@
+# Tested: Ubuntu 22.04 (WSL2), Python 3.10, RTX 3050 4GB
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch==2.1.2
+torchvision==0.16.2
+numpy<2
+opencv-python==4.10.0.84
+scipy
+pillow
+ultralytics
+# only needed to build info .pkl for nuScenes-mini (scripts/prepare_nuscenes_mini.sh):
+# mmengine==0.10.4, mmcv==2.1.0, mmdet==3.2.0, mmdet3d==1.4.0, nuscenes-devkit
