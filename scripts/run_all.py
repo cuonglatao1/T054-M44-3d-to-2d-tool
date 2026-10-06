@@ -3,9 +3,8 @@
   load GT -> project -> YOLO (cached) -> check clean GT (noise floor + reprojection error)
           -> inject errors -> project -> check -> evaluate recall -> HTML/CSV report
 
-Example (demo frame shipped with mmdet3d):
-  python scripts/run_all.py --info /root/work/mmdetection3d/demo/data/nuscenes/n015-2018-07-24-11-22-45+0800.pkl \
-      --data-root /root/work/mmdetection3d/demo/data/nuscenes --out out/demo
+Example (nuScenes-mini extracted to data/nuscenes):
+  python scripts/run_all.py --split val --max-frames 10 --out out/demo_live
 """
 import argparse
 import json
@@ -16,9 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from m44.evaluate import evaluate, reprojection_stats  # noqa: E402
 from m44.geometry import project_frame  # noqa: E402
 from m44.inject import inject  # noqa: E402
-from m44.loader import load_frames  # noqa: E402
+from m44.loader import add_data_args, frames_from_args  # noqa: E402
 from m44.match import DEFAULT_CFG, check, load_cfg  # noqa: E402
 from m44.report import build_report  # noqa: E402
+
+TUNED_CFG = Path(__file__).resolve().parents[1] / 'configs' / 'tuned.json'
 
 
 def dump(obj, path):
@@ -31,22 +32,21 @@ def project_all(frames):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--info', required=True, help='mmdet3d nuScenes info .pkl')
-    ap.add_argument('--data-root', required=True)
+    add_data_args(ap)
     ap.add_argument('--out', default='out/run')
-    ap.add_argument('--max-frames', type=int)
     ap.add_argument('--weights', default='yolo11m.pt')
-    ap.add_argument('--device', default='0')
+    ap.add_argument('--device', default='auto', help="'auto' (GPU if available), 'cpu' or a GPU index")
     ap.add_argument('--redetect', action='store_true', help='ignore cached det_2d.json')
     ap.add_argument('--rate', type=float, default=0.3, help='share of eligible boxes to corrupt')
     ap.add_argument('--seed', type=int, default=0)
-    ap.add_argument('--cfg', help='JSON file or inline JSON overriding match.DEFAULT_CFG (e.g. configs/tuned.json)')
+    ap.add_argument('--cfg', default=str(TUNED_CFG),
+                    help="thresholds: JSON file or inline JSON; 'default' = untuned match.DEFAULT_CFG")
     args = ap.parse_args()
-    cfg = load_cfg(args.cfg)
+    cfg = {} if args.cfg == 'default' else load_cfg(args.cfg)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    frames = load_frames(args.info, args.data_root, args.max_frames)
+    frames = frames_from_args(args)
     print(f'{len(frames)} frames, {sum(len(f["boxes"]) for f in frames)} cuboids')
     dump([{'sample': f['sample'], 'boxes': f['boxes']} for f in frames], out / 'gt_boxes.json')
 

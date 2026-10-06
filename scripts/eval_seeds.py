@@ -1,8 +1,7 @@
 """Aggregate recall over many random error injections (uses the cached det_2d.json of a run_all output).
 
 Use this when tuning match.py: one injection is too few errors to compare settings.
-  python scripts/eval_seeds.py --info … --data-root … --dets out/mini_train/det_2d.json --seeds 10 \
-      --cfg configs/tuned.json
+  python scripts/eval_seeds.py --split train --dets out/mini_train/det_2d.json --seeds 10 --cfg configs/tuned.json
 """
 import argparse
 import json
@@ -14,23 +13,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from m44.evaluate import evaluate  # noqa: E402
 from m44.geometry import project_frame  # noqa: E402
 from m44.inject import inject  # noqa: E402
-from m44.loader import load_frames  # noqa: E402
+from m44.loader import add_data_args, frames_from_args  # noqa: E402
 from m44.match import check, load_cfg  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--info', required=True)
-    ap.add_argument('--data-root', required=True)
+    add_data_args(ap)
     ap.add_argument('--dets', required=True)
     ap.add_argument('--cfg', help='JSON file or inline JSON overriding match.DEFAULT_CFG')
-    ap.add_argument('--max-frames', type=int)
     ap.add_argument('--seeds', type=int, default=10)
     ap.add_argument('--rate', type=float, default=0.3)
     args = ap.parse_args()
 
     cfg = load_cfg(args.cfg)
-    frames = load_frames(args.info, args.data_root, args.max_frames)
+    frames = frames_from_args(args)
     dets = json.loads(Path(args.dets).read_text(encoding='utf-8'))
     clean_proj = [p for f in frames for p in project_frame(f)]
     clean_flags, clean_matches = check(clean_proj, dets, cfg)

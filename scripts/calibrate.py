@@ -4,7 +4,7 @@ On correct labels, every flag is a false alarm. This prints where they come from
 per-class LOW_IOU threshold = the q-th percentile of IoU between projected cuboids and their
 matched detections on clean GT (so ~q of correct boxes would be flagged).
 
-  python scripts/calibrate.py --info …train.pkl --data-root … --dets out/mini_train/det_2d.json
+  python scripts/calibrate.py --split train --dets out/mini_train/det_2d.json
 """
 import argparse
 import json
@@ -16,21 +16,20 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from m44.geometry import project_frame  # noqa: E402
-from m44.loader import load_frames  # noqa: E402
+from m44.loader import add_data_args, frames_from_args  # noqa: E402
 from m44.match import check  # noqa: E402
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--info', required=True)
-    ap.add_argument('--data-root', required=True)
+    add_data_args(ap)
     ap.add_argument('--dets', required=True)
     ap.add_argument('--q', type=float, default=2.0, help='percentile for the proposed LOW_IOU threshold')
     ap.add_argument('--size-q', type=float, default=1.0, help='size bounds = [q, 100-q] percentiles')
     ap.add_argument('--write', help='write {"offset_iou", "size_bounds"} to this JSON for --cfg')
     args = ap.parse_args()
 
-    frames = load_frames(args.info, args.data_root)
+    frames = frames_from_args(args)
     dets = json.loads(Path(args.dets).read_text(encoding='utf-8'))
     proj = [p for f in frames for p in project_frame(f)]
     flags, matches = check(proj, dets)

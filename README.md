@@ -3,89 +3,93 @@
 Tool tự kiểm tra nhãn cuboid 3D (nuScenes) bằng camera: chiếu từng cuboid lên 6 camera, so với vật thể YOLO
 phát hiện trên ảnh, rồi báo các chỗ không nhất quán để reviewer xem nhanh thay vì mở từng camera đối chiếu bằng tay.
 
+![Ví dụ: cuboid chiếu lên CAM_FRONT](docs/img/example_cam_front.jpg)
+
+*Xanh lá: cuboid khớp vật thể · Đỏ: cuboid bị cảnh báo · Xanh dương: vật thể YOLO thấy · Cam: vật thể chưa có cuboid.
+Ảnh từ nuScenes (CC BY-NC-SA 4.0).*
+
+**Mới vào nhóm?** Đọc [docs/HUONG-DAN-TEAM.md](docs/HUONG-DAN-TEAM.md) – tool làm gì, đã làm đến đâu, ai làm gì tiếp.
+
+## Bắt đầu nhanh (Windows, không cần GPU)
+
+1. Cài **Python 3.11** từ [python.org](https://www.python.org/downloads/) – tick *Add python.exe to PATH*.
+2. Clone repo này, bấm đúp **`setup_windows.bat`** (một lần, 5–10 phút, tải ~1 GB).
+3. Tải **nuScenes-mini** (3,9 GB): <https://www.nuscenes.org/data/v1.0-mini.tgz>, giải nén vào `data\nuscenes`
+   trong thư mục repo (bên trong phải có `samples`, `sweeps`, `maps`, `v1.0-mini`).
+   Dữ liệu dùng theo giấy phép nuScenes (phi thương mại) – không commit lên GitHub.
+4. Bấm đúp **`run_demo.bat`** → chạy 10 frame (~2 phút trên CPU) → báo cáo tự mở trong trình duyệt.
+
+Để dữ liệu chỗ khác: đặt biến môi trường `NUSC_ROOT`, ví dụ `set NUSC_ROOT=D:\data\nuscenes` trước khi chạy.
+Kịch bản demo 5 phút: [docs/demo.md](docs/demo.md).
+
+## Kết quả hiện tại
+
+Trên tập val nuScenes-mini (81 frame, **không** dùng khi chỉnh ngưỡng), trung bình 10 lần cài lỗi ngẫu nhiên:
+
+| | Báo động giả / frame | Lỗi bắt được |
+|---|---|---|
+| Ngưỡng mặc định | 11,01 | 70,1% |
+| **Ngưỡng đã chỉnh (`configs/tuned.json`, mặc định của `run_all.py`)** | **2,53** | **62,9%** |
+
+Theo loại lỗi: sai class 95%, sai kích thước 90%, lệch vị trí 48%, thiếu cuboid 45%, xoay hướng 30%.
+Cách ra con số và các giới hạn: [docs/decision-log.md](docs/decision-log.md) (D-008, D-009).
+
+## Cảnh báo
+
 | Cảnh báo | Ý nghĩa |
 |---|---|
-| `LOW_IOU` | Cuboid lệch vị trí / sai kích thước so với vật thể trên ảnh |
-| `CLASS_MISMATCH` | Class của cuboid khác class vật thể trên ảnh |
+| `LOW_IOU` | Cuboid lệch vị trí so với vật thể trên ảnh |
 | `SIZE_MISMATCH` | Chiều cao / chiều rộng cuboid không khớp vật thể (sai kích thước hoặc sai hướng) |
+| `CLASS_MISMATCH` | Class của cuboid khác class vật thể trên ảnh |
 | `NO_2D_MATCH` | Cuboid không khớp vật thể nào trên ảnh (lệch xa, sai hẳn, hoặc bị che khuất) |
 | `MISSING_3D` | Vật thể thấy rõ trên ảnh nhưng chưa có cuboid |
-
-**Chạy nhanh:** bấm đúp `run_demo.bat` → báo cáo tự mở trong trình duyệt.
-Kịch bản demo 5 phút: [docs/demo.md](docs/demo.md).
 
 ## Pipeline
 
 ```
-info .pkl ─► loader ─► gt_boxes ─► inject (cài lỗi có đáp án) ─► noisy_boxes + injected_errors
-                                                                     │
-                                         projection ─► proj_2d ──────┤
-6 ảnh camera ─► YOLO ─► det_2d ──────────────────────────────► match ─► flags ─► evaluate (recall)
-                                                                              └► report (HTML + CSV)
+nuScenes ─► loader ─► gt_boxes ─► inject (cài lỗi có đáp án) ─► noisy_boxes + injected_errors
+                                                                    │
+                                        projection ─► proj_2d ──────┤
+6 ảnh camera ─► YOLO ─► det_2d ─────────────────────────────► match ─► flags ─► evaluate (recall)
+                                                                             └► report (HTML + CSV)
 ```
 
-Mỗi lần chạy kiểm tra **hai lần**: trên GT sạch (đo báo động giả nền + reprojection error) và trên GT đã cài lỗi
+Mỗi lần chạy kiểm tra **hai lần**: trên GT sạch (đo báo động giả + reprojection error) và trên GT đã cài lỗi
 (đo tool bắt được bao nhiêu lỗi). Định dạng các file JSON: [docs/json-formats.md](docs/json-formats.md).
 
-## Môi trường
+> Hiện `run_all.py` luôn cài lỗi vào nhãn để đo tool. Chế độ "chỉ kiểm tra" nhãn thật (cho pilot tuần 6) chưa làm.
 
-Chạy trong WSL distro `mmdet3d` (nằm ở `D:\WSL\mmdet3d`, venv `/opt/m3d`):
+## Dòng lệnh
 
-```bash
-wsl -d mmdet3d
-source /opt/m3d/bin/activate
-cd /mnt/d/m44-consistency-checker
+```bat
+.venv\Scripts\activate
+python scripts\run_all.py --split val --out out\mini_val            :: cả tập val (81 frame)
+python scripts\run_all.py --split val --max-frames 10 --out out\x   :: thử nhanh
 ```
 
-Cài mới trên máy khác: xem `requirements.txt` (cần GPU NVIDIA cho YOLO nhanh; không có GPU thì thêm `--device cpu`).
+Tham số: `--nusc-root` (thư mục nuScenes, mặc định `data\nuscenes` hoặc `NUSC_ROOT`), `--split train|val`,
+`--max-frames N`, `--rate 0.3` (tỉ lệ cuboid bị cài lỗi), `--seed 1` (bộ lỗi khác), `--redetect` (chạy lại YOLO
+thay vì dùng cache `det_2d.json`), `--device cpu|0|auto`, `--cfg default` (ngưỡng chưa chỉnh).
 
-## Chạy thử trên frame demo (không cần tải dữ liệu)
-
-```bash
-python tests/test_projection.py          # kiểm chứng phép chiếu với box 2D mmdet3d tính sẵn
-python scripts/run_all.py \
-  --info /root/work/mmdetection3d/demo/data/nuscenes/n015-2018-07-24-11-22-45+0800.pkl \
-  --data-root /root/work/mmdetection3d/demo/data/nuscenes --out out/demo
-```
-
-Mở `out/demo/index.html` bằng trình duyệt.
-
-## Chạy trên nuScenes-mini
-
-1. Tải **v1.0-mini** tại nuscenes.org (cần tài khoản), giải nén vào `D:\data\nuscenes`
-   (bên trong có `samples/`, `sweeps/`, `maps/`, `v1.0-mini/`).
-2. `bash scripts/prepare_nuscenes_mini.sh` – sinh file info `.pkl` (một lần).
-3. ```bash
-   python scripts/run_all.py --info /mnt/d/data/nuscenes/nuscenes_infos_val.pkl \
-     --data-root /mnt/d/data/nuscenes --out out/mini_val --cfg configs/tuned.json
-   ```
-
-**Luôn dùng `--cfg configs/tuned.json`.** Không có nó, tool chạy với ngưỡng mặc định và báo nhầm nhiều gấp ~4 lần.
-
-Kết quả hiện tại trên tập val (81 frame, không dùng khi chỉnh ngưỡng): **2,53 báo động giả/frame, bắt được 62,9%
-lỗi cài vào** (mặc định: 11,01 / 70,1%). Chi tiết: [docs/decision-log.md](docs/decision-log.md) D-008, D-009.
+Test: `python tests\test_projection.py` (cần frame demo của mmdet3d) và `python tests\test_loader_nusc.py`
+(cần info .pkl của mmdet3d) – chỉ chạy được trong môi trường WSL bên dưới.
 
 ## Chỉnh ngưỡng (tuning)
 
-Chỉnh trên tập **train**, đo cuối trên tập **val**:
+Chỉnh trên tập **train**, đo cuối trên tập **val** (cần `det_2d.json` từ một lần `run_all.py` trên split đó):
 
-```bash
-python scripts/calibrate.py --info …train.pkl --data-root … --dets out/mini_train/det_2d.json \
-  --q 5 --size-q 2 --write configs/calibrated.json   # phân tích báo nhầm + sinh ngưỡng theo class
-python scripts/sweep.py --info …train.pkl --data-root … --dets out/mini_train/det_2d.json \
-  --configs configs/sweep2.json                      # so nhiều cấu hình: báo động giả/frame vs recall
-python scripts/eval_seeds.py … --cfg configs/tuned.json   # một cấu hình, nhiều lần cài lỗi
+```bat
+python scripts\calibrate.py --split train --dets out\mini_train\det_2d.json --q 5 --size-q 2 --write configs\calibrated.json
+python scripts\sweep.py --split train --dets out\mini_train\det_2d.json --configs configs\sweep2.json
+python scripts\eval_seeds.py --split val --dets out\mini_val\det_2d.json --cfg configs\tuned.json
 ```
 
-Tham số hay dùng: `--max-frames 20` (chạy thử ít frame), `--rate 0.3` (tỉ lệ cuboid bị cài lỗi), `--seed 1`
-(bộ lỗi khác), `--redetect` (chạy lại YOLO thay vì dùng cache `det_2d.json`).
-
-## Đầu ra (`out/<tên>/`)
+## Đầu ra (`out\<tên>\`)
 
 | File | Dùng cho |
 |---|---|
 | `index.html` | Reviewer xem cảnh báo + ảnh 6 camera |
-| `flags_for_grading.csv` | Dán vào Google Sheet "Chấm tool" – người chấm điền Đúng/Nhầm (chấm mù, không biết lỗi nào là cài) |
+| `flags_for_grading.csv` | Dán vào Google Sheet "Chấm tool" – điền Đúng/Nhầm (chấm mù, không biết lỗi nào là cài) |
 | `metrics.json` | Recall theo loại lỗi, báo động giả, reprojection error |
 | `injected_errors.json` | Đáp án lỗi đã cài (có cột `caught`) – **không đưa cho người chấm** |
 
@@ -93,9 +97,21 @@ Tham số hay dùng: `--max-frames 20` (chạy thử ít frame), `--rate 0.3` (t
 
 ```
 src/m44/   loader · geometry · detect · match · inject · evaluate · report
-scripts/   run_all.py · prepare_nuscenes_mini.sh · calibrate.py · sweep.py · eval_seeds.py
+scripts/   run_all.py · calibrate.py · sweep.py · eval_seeds.py · prepare_nuscenes_mini.sh (chỉ WSL)
 configs/   tuned.json (cấu hình dùng thật) · calibrated_*.json · sweep*.json
-tests/     test_projection.py
-docs/      decision-log.md · json-formats.md
+tests/     test_projection.py · test_loader_nusc.py
+docs/      HUONG-DAN-TEAM.md · demo.md · decision-log.md · json-formats.md
 templates/ baseline_review.csv – sheet bấm giờ review, dùng cho cả baseline (tay) và pilot (có tool)
+```
+
+## Môi trường GPU (WSL, nâng cao)
+
+Máy tech lead chạy trong WSL distro `mmdet3d` (CUDA, PyTorch 2.1, mmdet3d 1.4 – cần cho PointPillars và để sinh
+info .pkl cho test). Không cần cho việc chạy tool.
+
+```bash
+wsl -d mmdet3d
+source /opt/m3d/bin/activate
+cd /mnt/d/m44-consistency-checker
+python scripts/run_all.py --nusc-root /mnt/d/data/nuscenes --split val --out out/mini_val
 ```

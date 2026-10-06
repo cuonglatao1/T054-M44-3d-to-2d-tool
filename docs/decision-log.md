@@ -2,6 +2,16 @@
 
 Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do → hệ quả. Mới nhất ở trên cùng.
 
+## D-010 · Đọc nuScenes trực tiếp bằng nuscenes-devkit, bỏ phụ thuộc mmdet3d / WSL khi chạy tool
+- **Bối cảnh:** môi trường cũ (WSL + PyTorch CUDA + mmcv + mmdet3d, ~9 GB, nhiều lỗi phiên bản) chỉ cần mmdet3d để
+  sinh file info `.pkl`. Thành viên không có nền tảng kỹ thuật không thể tự cài.
+- **Quyết định:** `loader.load_frames_nusc` đọc thẳng bảng nuScenes; `requirements.txt` chỉ còn numpy, scipy,
+  pillow, nuscenes-devkit, ultralytics; thêm `setup_windows.bat`, `run_demo.bat` chạy Python Windows, CPU được.
+  `run_all.py` dùng `configs/tuned.json` làm mặc định để không ai quên.
+- **Kiểm chứng:** `tests/test_loader_nusc.py` – 81 frame / 4.441 cuboid val khớp loader cũ tuyệt đối (lidar2cam
+  lệch 5·10⁻⁸ do pkl lưu float32). Cài từ bản sao sạch của repo trên Windows: chạy được, kết quả demo giống hệt bản
+  GPU trong WSL (482 detection, 42/59 lỗi, 90 cảnh báo); 10 frame mất ~2 phút trên CPU.
+
 ## D-009 · Chọn cấu hình `configs/tuned.json`, kiểm chứng trên tập val
 - **Quy trình:** chỉnh mọi ngưỡng trên nuScenes-mini **train** (323 frame, 8 cảnh); đo cuối trên **val** (81 frame,
   2 cảnh) chưa dùng khi chỉnh. Recall = trung bình 10 lần cài lỗi ngẫu nhiên (30% cuboid kiểm tra được).
@@ -58,11 +68,12 @@ Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do 
 - **Lý do:** YOLO hay gọi SUV/bán tải là "truck"; bắt khớp tuyệt đối sẽ ra nhiều `CLASS_MISMATCH` giả.
 - **Hệ quả:** lỗi đổi class giữa hai class cùng nhóm (car ↔ truck) không bắt được – nêu trong giới hạn.
 
-## D-003 · Phép chiếu dùng calibration tĩnh, chấp nhận sai lệch ~1 px
+## D-003 · Chấp nhận sai lệch ~1 px so với box 2D tham chiếu của mmdet3d
 - **Bối cảnh:** so với box 2D mmdet3d tính sẵn: IoU trung vị 0,949, lệch ~1 px.
-- **Lý do sai lệch:** mmdet3d bù chuyển động của xe giữa thời điểm quét LiDAR và chụp camera (~30 ms); `lidar2cam`
-  trong info chỉ là calibration tĩnh.
-- **Hệ quả:** không ảnh hưởng ngưỡng IoU 0,5. Nếu xe chạy nhanh có thể cần bù ego-pose (ghi nhận, chưa làm).
+- **Sửa lại (khi làm D-010):** ban đầu ghi lý do là `lidar2cam` trong info không bù chuyển động của xe – **sai**.
+  Đọc code mmdet3d (`obtain_sensor2top`) thấy `lidar2cam` đã đi qua ego-pose ở cả thời điểm LiDAR và camera, tức
+  là đã bù. Nguyên nhân chính xác của ~1 px chưa xác định (có thể do cách mmdet3d lấy bao lồi rồi cắt theo ảnh).
+- **Hệ quả:** không ảnh hưởng ngưỡng; loader D-010 tính cùng chuỗi biến đổi nên có bù chuyển động.
 
 ## D-002 · `bbox_3d` trong info pkl là tâm khối, không phải tâm đáy
 - **Bối cảnh:** lần chiếu đầu IoU luôn ≈ 0,333 – đúng bằng IoU khi box bị dịch lên nửa chiều cao.

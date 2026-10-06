@@ -1,6 +1,6 @@
 """Compare several match configs in one process (data and detections loaded once).
 
-  python scripts/sweep.py --info …train.pkl --data-root … --dets out/mini_train/det_2d.json --configs configs/sweep.json
+  python scripts/sweep.py --split train --dets out/mini_train/det_2d.json --configs configs/sweep.json
 configs/sweep.json: {"name": {cfg overrides} or "path/to/cfg.json", …}
 """
 import argparse
@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
 from m44.evaluate import evaluate  # noqa: E402
 from m44.geometry import project_frame  # noqa: E402
 from m44.inject import inject  # noqa: E402
-from m44.loader import load_frames  # noqa: E402
+from m44.loader import add_data_args, frames_from_args  # noqa: E402
 from m44.match import check, load_cfg  # noqa: E402
 
 
@@ -39,15 +39,14 @@ def run(frames, dets, clean_proj, noisy_sets, cfg):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--info', required=True)
-    ap.add_argument('--data-root', required=True)
+    add_data_args(ap)
     ap.add_argument('--dets', required=True)
     ap.add_argument('--configs', required=True)
     ap.add_argument('--seeds', type=int, default=5)
     ap.add_argument('--rate', type=float, default=0.3)
     args = ap.parse_args()
 
-    frames = load_frames(args.info, args.data_root)
+    frames = frames_from_args(args)
     dets = json.loads(Path(args.dets).read_text(encoding='utf-8'))
     clean_proj = [p for f in frames for p in project_frame(f)]
     noisy_sets = [lambda elig, s=s: inject(frames, elig, args.rate, s) for s in range(args.seeds)]

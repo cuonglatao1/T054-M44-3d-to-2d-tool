@@ -2,23 +2,19 @@
 
 ## Cách chạy
 
-**Cách 1 – bấm đúp (cho cả nhóm):** mở `D:\m44-consistency-checker\run_demo.bat`. Tool chạy trên 10 frame
-nuScenes-mini (khoảng 30 giây) và tự mở báo cáo trong trình duyệt.
+**Cách 1 – bấm đúp:** cài đặt một lần theo *Bắt đầu nhanh* trong [README](../README.md), rồi bấm đúp
+`run_demo.bat`. Tool chạy 10 frame nuScenes-mini (~2 phút trên CPU) và tự mở báo cáo trong trình duyệt.
 
 **Cách 2 – xem kết quả có sẵn (không cần chạy):** mở bằng trình duyệt
 - `out\demo_live\index.html` – 10 frame, dùng khi demo
 - `out\mini_val\index.html` – toàn bộ tập val (81 frame), dùng để chấm tool
 
-**Cách 3 – dòng lệnh (tech lead):**
-```bash
-wsl -d mmdet3d
-source /opt/m3d/bin/activate
-cd /mnt/d/m44-consistency-checker/weights
-python ../scripts/run_all.py --info /mnt/d/data/nuscenes/nuscenes_infos_val.pkl \
-  --data-root /mnt/d/data/nuscenes --out ../out/demo_live --max-frames 10 --cfg ../configs/tuned.json
+**Cách 3 – dòng lệnh:**
+```bat
+.venv\Scripts\python scripts\run_all.py --split val --max-frames 10 --out out\demo_live
 ```
-Kết quả không đổi giữa các lần chạy (cùng seed, YOLO cache trong `det_2d.json`), nên các mã cảnh báo bên dưới
-luôn trỏ đúng chỗ.
+Kết quả giống nhau trên mọi máy, GPU hay CPU (cùng seed cài lỗi, YOLO cho cùng kết quả – đã kiểm tra), nên các
+mã cảnh báo bên dưới luôn trỏ đúng chỗ.
 
 ## Đọc báo cáo
 

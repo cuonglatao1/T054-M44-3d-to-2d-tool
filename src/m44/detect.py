@@ -5,9 +5,12 @@ COCO_CLASSES = {0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 5: 'bus', 
 
 
 def detect(frames: list[dict], weights: str = 'yolo11m.pt', conf: float = 0.25,
-           imgsz: int = 1280, device: str | int = 0) -> list[dict]:
+           imgsz: int = 1280, device: str | int = 'auto') -> list[dict]:
+    import torch
     from ultralytics import YOLO
 
+    if device == 'auto':
+        device = 0 if torch.cuda.is_available() else 'cpu'
     model = YOLO(weights)
     out = []
     for frame in frames:

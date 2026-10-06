@@ -1,12 +1,111 @@
-"""Load frames (6 cameras + calibration + 3D boxes) from an mmdet3d nuScenes info .pkl.
+"""Load frames (6 cameras + calibration + 3D boxes).
 
-The same format is produced for nuScenes-mini by mmdet3d `tools/create_data.py nuscenes`,
-so the demo frame and the full dataset go through one code path.
+Two sources, same output:
+  * load_frames_nusc – straight from the nuScenes tables with nuscenes-devkit (default, no mmdet3d needed)
+  * load_frames      – from an mmdet3d info .pkl (used for the mmdet3d demo frame)
 """
+import argparse
+import os
 import pickle
 from pathlib import Path
 
 import numpy as np
+
+# nuScenes category -> detection class (same mapping as mmdet3d NuScenesDataset); others are ignored
+NUSC_CLASSES = {
+    'movable_object.barrier': 'barrier', 'vehicle.bicycle': 'bicycle', 'vehicle.bus.bendy': 'bus',
+    'vehicle.bus.rigid': 'bus', 'vehicle.car': 'car', 'vehicle.construction': 'construction_vehicle',
+    'vehicle.motorcycle': 'motorcycle', 'human.pedestrian.adult': 'pedestrian',
+    'human.pedestrian.child': 'pedestrian', 'human.pedestrian.construction_worker': 'pedestrian',
+    'human.pedestrian.police_officer': 'pedestrian', 'movable_object.trafficcone': 'traffic_cone',
+    'vehicle.trailer': 'trailer', 'vehicle.truck': 'truck',
+}
+CAMERAS = ['CAM_FRONT', 'CAM_FRONT_RIGHT', 'CAM_FRONT_LEFT', 'CAM_BACK', 'CAM_BACK_LEFT', 'CAM_BACK_RIGHT']
+
+
+def _pose(record) -> np.ndarray:
+    from pyquaternion import Quaternion
+
+    T = np.eye(4)
+    T[:3, :3] = Quaternion(record['rotation']).rotation_matrix
+    T[:3, 3] = record['translation']
+    return T
+
+
+def load_frames_nusc(nusc_root: str, split: str = 'val', version: str = 'v1.0-mini',
+                     max_frames: int | None = None) -> list[dict]:
+    """Frames of one split read directly from the nuScenes tables.
+
+    lidar2cam chains LiDAR -> ego (LiDAR time) -> global -> ego (camera time) -> camera, so the ego
+    motion between the LiDAR sweep and each camera exposure is compensated (as mmdet3d infos do).
+    """
+    from nuscenes.nuscenes import NuScenes
+    from nuscenes.utils.splits import create_splits_scenes
+
+    nusc = NuScenes(version=version, dataroot=str(nusc_root), verbose=False)
+    split_key = f'mini_{split}' if version.endswith('mini') else split
+    scenes = set(create_splits_scenes()[split_key])
+
+    frames = []
+    for sample in nusc.sample:  # same order as mmdet3d infos, so frame N is the same frame in both
+        scene = nusc.get('scene', sample['scene_token'])
+        if scene['name'] not in scenes:
+            continue
+        lidar_sd = nusc.get('sample_data', sample['data']['LIDAR_TOP'])
+        lidar2global = _pose(nusc.get('ego_pose', lidar_sd['ego_pose_token'])) @ \
+            _pose(nusc.get('calibrated_sensor', lidar_sd['calibrated_sensor_token']))
+
+        cams = {}
+        for cam in CAMERAS:
+            sd = nusc.get('sample_data', sample['data'][cam])
+            cs = nusc.get('calibrated_sensor', sd['calibrated_sensor_token'])
+            cam2global = _pose(nusc.get('ego_pose', sd['ego_pose_token'])) @ _pose(cs)
+            cams[cam] = {
+                'img_path': str(nusc.get_sample_data_path(sd['token'])),
+                'cam2img': np.asarray(cs['camera_intrinsic'], dtype=float).tolist(),
+                'lidar2cam': (np.linalg.inv(cam2global) @ lidar2global).tolist(),
+            }
+
+        _, lidar_boxes, _ = nusc.get_sample_data(lidar_sd['token'])  # in LiDAR frame, order of sample['anns']
+        boxes = []
+        for i, (ann_token, box) in enumerate(zip(sample['anns'], lidar_boxes)):
+            ann = nusc.get('sample_annotation', ann_token)
+            cls = NUSC_CLASSES.get(ann['category_name'])
+            if cls is None:
+                continue
+            w, l, h = box.wlh
+            x, y, z = box.center  # gravity center
+            boxes.append({
+                'box_id': f"{sample['token'][:8]}_{i:03d}",
+                'cls': cls,
+                'center': [float(x), float(y), float(z - h / 2)],  # bottom-center
+                'size': [float(l), float(w), float(h)],
+                'yaw': float(box.orientation.yaw_pitch_roll[0]),
+                'num_lidar_pts': int(ann['num_lidar_pts']),
+                'visibility': int(ann['visibility_token']),
+            })
+        frames.append({'sample': sample['token'], 'night': 'night' in scene['description'].lower(),
+                       'cams': cams, 'boxes': boxes})
+        if max_frames and len(frames) >= max_frames:
+            break
+    return frames
+
+
+def add_data_args(ap: argparse.ArgumentParser):
+    """CLI flags shared by every script: nuScenes folder + split (default) or an mmdet3d info .pkl."""
+    ap.add_argument('--nusc-root', default=os.environ.get('NUSC_ROOT', 'data/nuscenes'),
+                    help='nuScenes folder containing samples/ and v1.0-mini/ (env NUSC_ROOT)')
+    ap.add_argument('--split', default='val', choices=['train', 'val'])
+    ap.add_argument('--version', default='v1.0-mini')
+    ap.add_argument('--info', help='optional mmdet3d info .pkl instead of the nuScenes tables')
+    ap.add_argument('--data-root', help='image root for --info (defaults to --nusc-root)')
+    ap.add_argument('--max-frames', type=int)
+
+
+def frames_from_args(args) -> list[dict]:
+    if args.info:
+        return load_frames(args.info, args.data_root or args.nusc_root, args.max_frames)
+    return load_frames_nusc(args.nusc_root, args.split, args.version, args.max_frames)
 
 
 def _resolve(data_root: Path, rel: str, cam: str) -> str:
