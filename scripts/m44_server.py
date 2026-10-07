@@ -42,13 +42,19 @@ def nusc_root() -> str:
 
 
 def existing_tasks(names: set[str]) -> list[dict]:
-    """Tasks created earlier from this machine (out/cvat_tasks/task_*/task.json) with one of these names."""
+    """Tasks created earlier from this machine (out/cvat_tasks/task_*/task.json) with one of these names
+    that still exist in CVAT (people delete tasks in the CVAT UI)."""
     found = []
     for p in sorted((ROOT / 'out' / 'cvat_tasks').glob('task_*/task.json')):
         info = json.loads(p.read_text(encoding='utf-8'))
         if info.get('name') in names:
             found.append(info)
-    return found
+    if not found:
+        return []
+    cvat_io.load_env(ROOT / '.cvat.env')
+    with cvat_io.connect() as client:
+        alive = {t.id for t in client.tasks.list()}
+    return [t for t in found if t['task_id'] in alive]
 
 
 def start_create(title: str, specs: list[dict]) -> str:
