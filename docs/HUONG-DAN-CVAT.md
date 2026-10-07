@@ -99,5 +99,6 @@ tự vẽ cuboid còn thiếu.
 | "frame … không có mã nuScenes trong tên" | Task tạo tay trên CVAT – tạo lại bằng `create_task.bat` |
 | "Không tìm thấy frame nuScenes …" | Thiếu hoặc sai chỗ dữ liệu `data\nuscenes` |
 | `Connection refused` tới `localhost:8080` | CVAT local chưa chạy – mở Docker Desktop, chờ CVAT khởi động |
+| Vừa cập nhật code mà lỗi cũ vẫn còn (vd `KeyError: ('Car', 'qc')`) | Đóng cửa sổ đen `m44_server.bat` rồi mở lại – dịch vụ chỉ nạp code lúc khởi động |
 | Cờ `qc` không đổi trong CVAT | Tải lại trang CVAT (F5) sau khi tool chạy xong |
 | Khác | Chụp màn hình cửa sổ đen + trang lỗi, gửi vào Discord nhóm |
