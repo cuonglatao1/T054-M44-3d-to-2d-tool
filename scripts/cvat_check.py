@@ -56,7 +56,7 @@ def check_task(task_id: int, out: Path | None = None, nusc_root: str | None = No
     with cvat_io.connect() as client:
         task = client.tasks.retrieve(task_id)
         log(f'Đọc task {task.id} "{task.name}" từ CVAT…')
-        tokens = {cvat_io.sample_of(fr.name) for fr in task.get_frames_info()}
+        tokens = set(cvat_io.task_samples(task))
         base = {f['sample']: f for f in load_frames_nusc(nusc_root, 'all', version, samples=tokens)}
         frames, shapes = cvat_io.read_frames(task, base)
         log(f'{len(frames)} frame, {len(shapes)} cuboid. Đang chạy YOLO và kiểm tra…')

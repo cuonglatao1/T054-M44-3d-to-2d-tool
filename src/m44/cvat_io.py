@@ -8,6 +8,7 @@ CVAT cuboid points = [x, y, z (gravity center), rx, ry, rz, sx, sy, sz, 0 x 7] i
 our boxes are LiDAR-frame bottom-centered with yaw = rz, size = (sx, sy, sz).
 """
 import os
+import re
 import shutil
 import zipfile
 from pathlib import Path
@@ -16,6 +17,14 @@ import numpy as np
 
 CLASSES = ['car', 'truck', 'bus', 'trailer', 'construction_vehicle', 'pedestrian', 'motorcycle', 'bicycle',
            'traffic_cone', 'barrier']
+# label names people use in their own CVAT tasks -> checker class (matched case-insensitively)
+LABEL_ALIASES = {
+    'person': 'pedestrian', 'people': 'pedestrian', 'human': 'pedestrian', 'nguoi': 'pedestrian',
+    'vehicle': 'car', 'van': 'car', 'suv': 'car', 'xe_con': 'car', 'oto': 'car',
+    'motorbike': 'motorcycle', 'scooter': 'motorcycle', 'xe_may': 'motorcycle',
+    'bike': 'bicycle', 'cyclist': 'bicycle', 'xe_dap': 'bicycle',
+    'lorry': 'truck', 'xe_tai': 'truck', 'xe_buyt': 'bus', 'cone': 'traffic_cone', 'trafficcone': 'traffic_cone',
+}
 QC_OK = 'OK'
 QC_VALUES = [QC_OK, 'LOW_IOU', 'SIZE_MISMATCH', 'CLASS_MISMATCH', 'NO_2D_MATCH']
 VISIBILITY_VALUES = ['4', '3', '2', '1']  # nuScenes levels, 4 = 80–100 % visible (default for new boxes)
@@ -132,18 +141,26 @@ def upload_boxes(task, frames: list[dict]) -> int:
     from cvat_sdk import models
 
     by_name, _, attr_id = _label_maps(task)
+    # a project may name labels differently (e.g. "Car"); boxes of classes it lacks are skipped
+    label_of = {checker_class(n): lb for n, lb in by_name.items() if checker_class(n)}
     idx = frame_index(task)
     shapes = []
     for f in frames:
         for b in f['boxes']:
+            lb = label_of.get(b['cls'])
+            if lb is None:
+                continue
             l, w, h = b['size']
             x, y, z = b['center']
-            vis = str(b.get('visibility') or 4)
+            attrs = []
+            if (lb.name, 'visibility') in attr_id:
+                attrs.append(models.AttributeValRequest(spec_id=attr_id[(lb.name, 'visibility')],
+                                                        value=str(b.get('visibility') or 4)))
+            if (lb.name, 'qc') in attr_id:
+                attrs.append(models.AttributeValRequest(spec_id=attr_id[(lb.name, 'qc')], value=QC_OK))
             shapes.append(models.LabeledShapeRequest(
-                type='cuboid', frame=idx[f['sample']], label_id=by_name[b['cls']].id,
-                points=[x, y, z + h / 2, 0.0, 0.0, b['yaw'], l, w, h] + [0.0] * 7,
-                attributes=[models.AttributeValRequest(spec_id=attr_id[(b['cls'], 'visibility')], value=vis),
-                            models.AttributeValRequest(spec_id=attr_id[(b['cls'], 'qc')], value=QC_OK)],
+                type='cuboid', frame=idx[f['sample']], label_id=lb.id,
+                points=[x, y, z + h / 2, 0.0, 0.0, b['yaw'], l, w, h] + [0.0] * 7, attributes=attrs,
             ))
     task.set_annotations(models.LabeledDataRequest(shapes=shapes))
     return len(shapes)
@@ -151,25 +168,48 @@ def upload_boxes(task, frames: list[dict]) -> int:
 
 # ---------- CVAT -> checker ----------
 
+def checker_class(label: str) -> str | None:
+    """Map a CVAT label name to a checker class: exact class, alias, or None (not checked)."""
+    key = label.strip().lower().replace(' ', '_').replace('-', '_')
+    return key if key in CLASSES else LABEL_ALIASES.get(key)
+
+
+def task_samples(task) -> list[str]:
+    """nuScenes sample token of each CVAT frame; explains clearly when the task was not built by the tool."""
+    names = [fr.name for fr in task.get_frames_info()]
+    bad = [n for n in names if not re.fullmatch(r'\d{4}_[0-9a-f]{32}', Path(n).stem)]
+    if bad:
+        raise SystemExit(
+            f'Task {task.id}: frame "{bad[0]}" không có mã nuScenes trong tên. Tool chỉ kiểm tra được task tạo bằng '
+            'scripts/cvat_create_task.py (hoặc từ file zip do script đó tạo), vì cần ảnh camera + calibration '
+            'của đúng frame đó.')
+    return [sample_of(n) for n in names]
+
+
 def read_frames(task, base_frames: dict[str, dict]) -> tuple[list[dict], dict]:
     """Current task cuboids as checker frames. Images and calibration come from `base_frames`
-    (sample token -> frame from the loader). box_id = 'cvat<shape id>'. Returns (frames, shapes by id)."""
+    (sample token -> frame from the loader). box_id = 'cvat<shape id>'. Returns (frames, shapes by id).
+    Labels are mapped with checker_class(); cuboids of unknown labels are kept out of the check."""
     _, label_name, _ = _label_maps(task)
     attr_name = {a.id: a.name for lb in task.get_labels() for a in lb.attributes}
-    names = [fr.name for fr in task.get_frames_info()]
+    samples = task_samples(task)
+    missing = [s for s in samples if s not in base_frames]
+    if missing:
+        raise SystemExit(f'Không tìm thấy frame nuScenes {missing[0]} trong dữ liệu (kiểm tra NUSC_ROOT / data\\nuscenes).')
     shapes = [s for s in task.get_annotations().shapes if str(s.type) == 'cuboid']
 
-    frames = []
-    for i, n in enumerate(names):
-        base = base_frames[sample_of(n)]
-        frames.append({**base, 'boxes': [], 'cvat_frame': i})
+    frames = [{**base_frames[s], 'boxes': [], 'cvat_frame': i} for i, s in enumerate(samples)]
     for s in shapes:
+        cls = checker_class(label_name[s.label_id])
+        if cls is None:
+            continue
         x, y, z, _, _, rz, sx, sy, sz = s.points[:9]
         attrs = {attr_name.get(a.spec_id): a.value for a in s.attributes}
+        vis = attrs.get('visibility')
         frames[s.frame]['boxes'].append({
-            'box_id': f'cvat{s.id}', 'cls': label_name[s.label_id],
+            'box_id': f'cvat{s.id}', 'cls': cls,
             'center': [x, y, z - sz / 2], 'size': [sx, sy, sz], 'yaw': rz,
-            'visibility': int(attrs['visibility']) if attrs.get('visibility') else None,
+            'visibility': int(vis) if vis and str(vis).isdigit() else None,
         })
     return frames, {f'cvat{s.id}': s for s in shapes}
 
@@ -190,11 +230,11 @@ def write_qc(task, shapes: dict, flags: list[dict]) -> int:
 
     updates = []
     for box_id, s in shapes.items():
-        cls = label_name[s.label_id]
-        qc_spec = attr_id[(cls, 'qc')]
+        qc_spec = attr_id.get((label_name[s.label_id], 'qc'))  # tasks made in the CVAT UI may lack `qc`
         attrs = [models.AttributeValRequest(spec_id=a.spec_id, value=a.value)
                  for a in s.attributes if a.spec_id != qc_spec]
-        attrs.append(models.AttributeValRequest(spec_id=qc_spec, value=qc_of.get(box_id, QC_OK)))
+        if qc_spec is not None:
+            attrs.append(models.AttributeValRequest(spec_id=qc_spec, value=qc_of.get(box_id, QC_OK)))
         updates.append(models.LabeledShapeRequest(
             id=s.id, type='cuboid', frame=s.frame, label_id=s.label_id, points=list(s.points),
             occluded=s.occluded, z_order=s.z_order, rotation=s.rotation, group=s.group, source=s.source,

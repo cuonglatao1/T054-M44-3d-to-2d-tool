@@ -2,17 +2,16 @@
 
 Làm theo thứ tự. Mục nào ghi **(tech lead)** thì chỉ tech lead làm.
 
-## 0. Cả nhóm dùng CVAT nào? (tech lead chốt trước)
+## 0. Bạn dùng CVAT nào?
 
-Tool không chạy *trong* CVAT mà nói chuyện với CVAT qua mạng, nên mọi người phải dùng **cùng một CVAT** mà máy
-ai cũng vào được:
+**Mặc định: CVAT local trên máy bạn** (`http://localhost:8080`). Tool, dữ liệu và CVAT đều nằm trên máy bạn, không
+phụ thuộc máy ai khác. Ở dưới, `<CVAT_URL>` = `http://localhost:8080`.
 
-| Lựa chọn | Ghi chú |
-|---|---|
-| **CVAT của BTC / khoá học** (đã dùng tuần 1–3) | Tốt nhất nếu tài khoản của nhóm được tạo task. Hỏi BTC trước. |
-| CVAT trên máy tech lead | Hiện ở `http://localhost:8080` – **chỉ máy tech lead vào được**. Muốn dùng chung phải mở ra mạng LAN/Internet (cần cấu hình thêm). |
+Dùng CVAT khác (của BTC, của một bạn trong nhóm) thì thay `<CVAT_URL>` bằng địa chỉ đó – mọi bước giữ nguyên.
 
-Ghi lại địa chỉ CVAT đã chốt, gọi là `<CVAT_URL>` ở dưới (ví dụ `https://cvat.ten-khoa-hoc.vn`).
+Tool chạy được với CVAT local tự dựng (đã thử với CVAT 2.75): khác phiên bản thì chỉ hiện cảnh báo; label đặt tên
+khác (`Car`, `Person`, `motorbike`…) vẫn được nhận; task thiếu thuộc tính `qc` vẫn kiểm tra được (chỉ ghi Score).
+**Điều kiện duy nhất:** task phải tạo bằng tool (mục 4), vì tool cần ảnh camera + calibration của đúng frame.
 
 ## 1. Cài tool trên máy bạn (một lần, ~20 phút)
 
@@ -38,7 +37,8 @@ Cần cho ai muốn **bấm nút M44 Check** hoặc chạy tool. Người chỉ 
    ```
    Lưu lại. **Không gửi file này cho ai, không đưa lên GitHub** (repo đã chặn sẵn).
 
-Tool làm mọi thứ dưới tên tài khoản của bạn, nên bạn phải **được giao (assign) task/job** đó trên CVAT.
+Tool làm mọi thứ dưới tên tài khoản của bạn. Trên CVAT local của bạn thì bạn có toàn quyền; với CVAT của người
+khác, bạn phải **được giao (assign) task/job** đó.
 
 ## 3. Bật nút "M44 Check" (một lần)
 
@@ -49,18 +49,22 @@ Tool làm mọi thứ dưới tên tài khoản của bạn, nên bạn phải *
    *Thêm trang…* → dán vào ô URL.
 3. Mỗi lần mở máy làm việc: chỉ cần bấm đúp lại `m44_server.bat`.
 
-## 4. Tạo task cho nhóm (tech lead)
+## 4. Tạo task trên CVAT của bạn
 
-```bat
-.venv\Scripts\activate
-python scripts\cvat_create_task.py --split val --start-frame 50 --max-frames 10 --name "M44 pilot - nhom gan" --labels none
-```
+Bấm đúp **`create_task.bat`**, trả lời 4 câu (Enter để lấy giá trị mặc định):
 
-- `--labels none`: task trống để annotator tự gán (dùng cho pilot thật).
-- `--labels noisy`: nạp nhãn có cài lỗi + đáp án `out\cvat_tasks\task_<id>\answer_key.json` (**không đưa reviewer**).
-- Task **phải tạo bằng lệnh này** (tên frame chứa mã nuScenes để tool tìm được ảnh và calibration). Task tạo tay
-  trên giao diện CVAT thì tool **không** kiểm tra được.
-- Sau khi tạo: trên CVAT, giao job cho annotator / reviewer (cột **Assignee** của job).
+| Câu hỏi | Gợi ý |
+|---|---|
+| Tên task | ví dụ `Pilot - Lan` |
+| Bắt đầu từ frame số | `0`–`80` (tập val). Mỗi người chọn đoạn khác nhau để không trùng |
+| Số frame | `10` |
+| Nhãn sẵn | `none` = task trống để **tự gán** (pilot thật) · `gt` = nhãn gốc · `noisy` = nhãn có cài lỗi + đáp án |
+
+Cuối cùng hiện `task <id>: http://localhost:8080/tasks/<id>` – mở link đó trên CVAT.
+
+- `noisy` lưu đáp án ở `out\cvat_tasks\task_<id>\answer_key.json` – **không đưa cho reviewer**.
+- Task tạo tay trên giao diện CVAT (Create task) thì tool **không** kiểm tra được và sẽ báo rõ lý do.
+- Dòng lệnh tương đương: `python scripts\cvat_create_task.py --split val --start-frame 50 --max-frames 10 --name "..." --labels none`.
 
 ## 5. Annotator: gán nhãn
 
@@ -92,6 +96,8 @@ tự vẽ cuboid còn thiếu.
 | Bấm M44 Check không có gì xảy ra / tab báo không kết nối được | Chưa bật `m44_server.bat`, hoặc đã đóng cửa sổ đen |
 | "hãy mở một task hoặc job CVAT trước" | Bạn đang không ở trang task/job của CVAT |
 | Lỗi `401` / `403` | Token sai hoặc hết hạn, hoặc bạn chưa được giao task đó |
-| Lỗi `KeyError` / không tìm thấy sample | Task không tạo bằng `cvat_create_task.py`, hoặc thiếu dữ liệu `data\nuscenes` |
+| "frame … không có mã nuScenes trong tên" | Task tạo tay trên CVAT – tạo lại bằng `create_task.bat` |
+| "Không tìm thấy frame nuScenes …" | Thiếu hoặc sai chỗ dữ liệu `data\nuscenes` |
+| `Connection refused` tới `localhost:8080` | CVAT local chưa chạy – mở Docker Desktop, chờ CVAT khởi động |
 | Cờ `qc` không đổi trong CVAT | Tải lại trang CVAT (F5) sau khi tool chạy xong |
 | Khác | Chụp màn hình cửa sổ đen + trang lỗi, gửi vào Discord nhóm |

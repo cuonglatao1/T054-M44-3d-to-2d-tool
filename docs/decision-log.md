@@ -2,6 +2,15 @@
 
 Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do → hệ quả. Mới nhất ở trên cùng.
 
+## D-014 · Mỗi người dùng CVAT local của mình
+- **Bối cảnh:** nhóm chốt mỗi người chạy CVAT local; tool phải chịu được CVAT khác phiên bản, label đặt tên khác,
+  task thiếu thuộc tính `qc`/`visibility`, và báo rõ khi task không tạo từ tool.
+- **Quyết định:** tên label ánh xạ không phân biệt hoa thường + bảng alias (`Person`→pedestrian, `motorbike`→
+  motorcycle…), label lạ bị bỏ qua; thiếu `qc` thì chỉ ghi Score; tên frame không khớp `<4 số>_<token>` thì dừng
+  với thông báo tiếng Việt. SDK mặc định chỉ cảnh báo khi lệch phiên bản server. Thêm `create_task.bat`.
+- **Kiểm chứng:** task 54 (label `Car/Person/Bicycle/Truck`, không có thuộc tính): đọc 170 cuboid, 5 bị gắn cờ =
+  5 cuboid Score 0 trên CVAT. Task 55 (frame `scan0000/…`): dừng đúng với thông báo giải thích.
+
 ## D-013 · Nút "M44 Check" = bookmarklet + dịch vụ cục bộ, không sửa CVAT
 - **Bối cảnh:** người dùng muốn "label xong bấm một nút là tool kiểm tra và hiện danh sách lỗi".
 - **Phương án loại:** thêm nút vào giao diện CVAT (React) – phải build lại image `cvat_ui` (ổ C còn ~12 GB), chỉ
