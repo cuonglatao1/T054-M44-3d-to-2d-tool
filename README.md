@@ -76,9 +76,13 @@ python scripts\run_all.py --split val --max-frames 10 --out out\x   :: thử nha
 
 ## Dùng với CVAT 3D
 
-CVAT 3D không có Issue / chế độ Review, nên tool ghi kết quả vào **thuộc tính `qc` của từng cuboid**
-(`OK`, `LOW_IOU`, `SIZE_MISMATCH`, `CLASS_MISMATCH`, `NO_2D_MATCH`). Reviewer mở job, lọc object theo `qc` khác
-`OK`. `MISSING_3D` (không có cuboid để gắn) chỉ có trong báo cáo HTML, kèm link mở đúng frame trong CVAT.
+CVAT 3D không có Issue / chế độ Review, nên tool ghi kết quả lên **từng cuboid**:
+- thuộc tính `qc` = loại cảnh báo (`OK`, `LOW_IOU`, `SIZE_MISMATCH`, `CLASS_MISMATCH`, `NO_2D_MATCH`) – xem trong DETAILS;
+- **Score** = 0 nếu bị gắn cờ, 1 nếu OK.
+
+**Reviewer lọc:** Filters → Add rule → **Score** `<` `1` → Submit (một luật cho mọi label). Không nên lọc bằng
+`qc != OK`: thuộc tính đó gắn theo label, cuboid label khác không có nó nên CVAT coi là "khác OK" và vẫn hiện ra.
+`MISSING_3D` (không có cuboid để gắn) chỉ có trong báo cáo HTML, kèm link mở đúng frame trong CVAT.
 
 1. Copy `.cvat.env.example` thành `.cvat.env`, điền `CVAT_URL` và Personal Access Token (hoặc user/password).
    File này không được commit.

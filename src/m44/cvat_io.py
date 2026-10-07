@@ -175,7 +175,11 @@ def read_frames(task, base_frames: dict[str, dict]) -> tuple[list[dict], dict]:
 
 
 def write_qc(task, shapes: dict, flags: list[dict]) -> int:
-    """Set `qc` on every cuboid: the first flag type found for it, else OK. Returns #cuboids flagged."""
+    """Set `qc` on every cuboid: the first flag type found for it, else OK. Returns #cuboids flagged.
+
+    Also sets score = 0 (flagged) / 1 (OK): a filter on a label attribute like `qc != OK` also lets every
+    cuboid of *other* labels through (their attribute is undefined), while Score is common to all labels,
+    so reviewers can use a single filter rule `Score < 1`."""
     from cvat_sdk import models
 
     _, label_name, attr_id = _label_maps(task)
@@ -194,7 +198,7 @@ def write_qc(task, shapes: dict, flags: list[dict]) -> int:
         updates.append(models.LabeledShapeRequest(
             id=s.id, type='cuboid', frame=s.frame, label_id=s.label_id, points=list(s.points),
             occluded=s.occluded, z_order=s.z_order, rotation=s.rotation, group=s.group, source=s.source,
-            attributes=attrs,
+            attributes=attrs, score=0.0 if box_id in qc_of else 1.0,
         ))
     task.update_annotations(models.PatchedLabeledDataRequest(shapes=updates))
     return len(qc_of)

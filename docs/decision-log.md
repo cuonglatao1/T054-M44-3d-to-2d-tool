@@ -18,7 +18,10 @@ Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do 
 - **Kiểm tra trên giao diện CVAT 3D (task 52, frame 1):** nhìn từ trên, cuboid ô tô nằm trên làn đường và song
   song mép đường, cuboid người ở vỉa hè/góc giao lộ; chọn một người thì hình chiếu Side/Front cho hộp cao, hẹp
   ôm đúng đám điểm. Bảng chi tiết hiện kích thước (vd ô tô 4,96 × 2,04 × 1,64 m), `visibility`, `qc`.
-  Chưa thử hết thao tác lọc theo `qc` trong hộp Filters (Attributes → label → qc) vì khung trình duyệt quá hẹp.
+- **Sửa sau khi thử lọc (D-012b):** luật `Attributes → car → qc != OK` vẫn hiện mọi người đi bộ – bộ lọc CVAT
+  (json-logic trên `attr.<label>.<thuộc tính>`) coi thuộc tính không tồn tại là "khác OK". Tool ghi thêm
+  **Score** = 0 (bị gắn cờ) / 1 (OK); Score chung cho mọi label nên reviewer chỉ cần một luật `Score < 1`.
+  Task 52: 49 cuboid Score 0 đúng bằng 49 cuboid bị gắn cờ.
 
 ## D-011 · Chế độ "chỉ kiểm tra" (`scripts/check.py`) và ngưỡng ghép cặp khác class
 - **Bối cảnh:** `run_all.py` luôn cài lỗi giả nên chưa kiểm được nhãn thật. Chạy `check.py` trên nhãn gốc nuScenes
