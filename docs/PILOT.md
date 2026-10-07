@@ -32,6 +32,7 @@ Tech lead không review, chỉ chuẩn bị và tổng hợp.
 
 1. Cài tool, tạo `.cvat.env`, bật nút **M44 Check**: [HUONG-DAN-CVAT.md](HUONG-DAN-CVAT.md) mục 1–3.
 2. Mở trang **`http://localhost:8765`** (cửa sổ `m44_server.bat` đang chạy) → bấm nút **"Tạo task pilot (A + B)"**
+   (phần 1; task cho phần 2 tạo bằng nút **"Tạo task gán nhãn"** khi làm phần 2)
    → chờ ~2 phút. Trang hiện **PILOT A: 25 lỗi cài ✓ đúng** và **PILOT B: 18 lỗi cài ✓ đúng** kèm link mở task.
    Hiện chữ đỏ (số khác) → báo tech lead. Lỡ bấm lại thì trang báo task đã có, không tạo trùng.
    (Cách khác: bấm đúp `pilot_setup.bat`, phải thấy `injected 25 errors` và `injected 18 errors`.)
@@ -66,6 +67,23 @@ Tech lead không review, chỉ chuẩn bị và tổng hợp.
 | Thiếu cuboid | Chọn công cụ vẽ cuboid (thanh bên trái) → vẽ quanh vật thể → chỉnh trong Top/Side/Front |
 | Cuboid thừa / vẽ vào chỗ trống | Chọn cuboid → phím `Delete` |
 
+## Phần 2 – Gán nhãn từ đầu rồi sửa theo M44 Check (mỗi người, sau phần 1, ~40 phút)
+
+Phần 1 đo việc **review** nhãn có lỗi giả. Phần 2 đo đúng quy trình thật: **tự gán nhãn → bấm M44 Check → sửa**,
+với **lỗi thật** của chính bạn. Mọi người gán cùng 1 frame (Boston, 10 ô tô + 7 người đi bộ trong vòng 30 m).
+
+1. Trang `http://localhost:8765` → bấm **"Tạo task gán nhãn"** → mở task **PILOT GAN NHAN** (1 frame, chưa có nhãn).
+2. **Gán nhãn – tối đa 25 phút:** vẽ cuboid cho **tất cả ô tô (`car`) và người đi bộ (`pedestrian`) nhìn rõ trong
+   vòng ~30 m quanh xe** (vùng point cloud dày đặc gần tâm). Chỉnh `visibility` cho vật bị che. **Save.**
+3. **Chưa bấm M44 Check.** Bấm đúp **`pilot_label_score.bat`** → lần chấm `truoc`, số phút đã gán.
+4. **Sửa theo tool – tối đa 10 phút:** bấm **M44 Check** → sửa theo danh sách lỗi (thêm cuboid còn thiếu nếu danh
+   sách có `MISSING_3D`). **Save.**
+5. Bấm đúp **`pilot_label_score.bat`** → lần chấm `sau`, số phút đã sửa.
+6. Gửi 2 file `out\pilot\<tên>_label_truoc.json` và `<tên>_label_sau.json` cho tech lead.
+
+Đo được: nhãn đúng / lệch / bỏ sót / thừa **trước và sau** khi sửa theo tool, và **cảnh báo của tool trên nhãn
+người thật** có chỉ đúng cuboid sai không (độ chính xác) và bắt được bao nhiêu cuboid sai (độ phủ).
+
 ## Tech lead tổng hợp
 
 Gom các file `*.json` của mọi người vào `out\pilot\` rồi chạy:
@@ -74,6 +92,7 @@ Gom các file `*.json` của mọi người vào `out\pilot\` rồi chạy:
 .venv\Scripts\python scripts\pilot_report.py
 ```
 
-Kết quả: `out\pilot\pilot_summary.md` (bảng so sánh tay / tool, theo loại lỗi, từng người) và `pilot_summary.csv`.
+Kết quả: `out\pilot\pilot_summary.md` (phần 1: bảng so sánh tay / tool, theo loại lỗi, từng người; phần 2: chất
+lượng nhãn trước → sau khi sửa theo tool và độ chính xác của tool trên nhãn thật) và `pilot_summary.csv`.
 Kiểm tra trước khi pilot: tạo task, không sửa gì, chấm → phải ra 0 lỗi sửa được; đưa nhãn về nhãn gốc → 25/25 và
 18/18 (đã thử, D-015 trong decision log).

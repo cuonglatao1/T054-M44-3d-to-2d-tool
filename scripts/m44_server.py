@@ -35,6 +35,8 @@ CREATES: dict[str, dict] = {}         # creation job id -> {state, log, results,
 # must stay identical to pilot_setup.bat so every reviewer gets the same frames and the same injected errors
 PILOT_SPECS = [{'name': 'PILOT A', 'start': 10, 'count': 5, 'labels': 'noisy', 'expect': 25},
                {'name': 'PILOT B', 'start': 60, 'count': 5, 'labels': 'noisy', 'expect': 18}]
+# pilot part 2: one empty frame (Boston, 10 cars + 7 pedestrians within 30 m) labelled from scratch
+LABEL_SPECS = [{'name': 'PILOT GAN NHAN', 'start': 25, 'count': 1, 'labels': 'none'}]
 
 
 def nusc_root() -> str:
@@ -178,7 +180,9 @@ class Handler(BaseHTTPRequestHandler):
 ghi cờ vào CVAT và mở danh sách lỗi. Không thấy thanh dấu trang: <code>Ctrl+Shift+B</code>.</p>
 <h2>Tạo task trên CVAT</h2>
 <p><a class="btn" href="/create?preset=pilot">Tạo task pilot (A + B)</a>
-&nbsp;tạo PILOT A (25 lỗi cài) và PILOT B (18 lỗi cài) – giống hệt máy các bạn khác.</p>
+&nbsp;phần 1: PILOT A (25 lỗi cài) và PILOT B (18 lỗi cài) – giống hệt máy các bạn khác.</p>
+<p><a class="btn" href="/create?preset=label">Tạo task gán nhãn</a>
+&nbsp;phần 2: 1 frame trống (Boston) để tự gán ô tô + người đi bộ rồi bấm M44 Check.</p>
 <form action="/create" method="get" style="margin-top:12px">
 <b>Tạo task khác:</b> tên <input name="name" value="M44 task" size="14">
 · từ frame <input name="start" type="number" value="0" min="0" max="80" style="width:4em">
@@ -221,15 +225,17 @@ poll();
         if running:
             job_id = next(k for k, v in CREATES.items() if v is running)
         else:
-            if q.get('preset', [''])[0] == 'pilot':
-                specs, title = PILOT_SPECS, 'Tạo task pilot A + B'
+            preset = q.get('preset', [''])[0]
+            if preset in ('pilot', 'label'):
+                specs, title = (PILOT_SPECS, 'Tạo task pilot A + B') if preset == 'pilot' else \
+                    (LABEL_SPECS, 'Tạo task gán nhãn (pilot phần 2)')
                 done = existing_tasks({s['name'] for s in specs})
                 if done and 'again' not in q:
                     items = ''.join(f"<li>{html.escape(t['name'])}: <a href='{t['url']}' target='_blank'>task "
                                     f"{t['task_id']}</a></li>" for t in done)
                     return self._page('Đã có task pilot', f"""<h1>Máy này đã tạo task pilot</h1><ul>{items}</ul>
 <p>Dùng các task trên. Tạo lại sẽ ra task mới (trùng tên) – chỉ làm khi task cũ đã bị xoá hoặc hỏng.</p>
-<p><a href="/create?preset=pilot&again=1">Vẫn tạo lại</a> · <a href="/">Về trang chính</a></p>""")
+<p><a href="/create?preset={preset}&again=1">Vẫn tạo lại</a> · <a href="/">Về trang chính</a></p>""")
             else:
                 name = q.get('name', ['M44 task'])[0].strip() or 'M44 task'
                 start, count = int(q.get('start', ['0'])[0]), int(q.get('count', ['10'])[0])

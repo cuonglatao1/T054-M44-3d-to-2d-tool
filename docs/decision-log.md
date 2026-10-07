@@ -2,6 +2,17 @@
 
 Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do → hệ quả. Mới nhất ở trên cùng.
 
+## D-016 · Pilot phần 2: gán nhãn từ đầu, chấm trước / sau khi sửa theo M44 Check
+- **Bối cảnh:** phần 1 chỉ đo review nhãn có lỗi giả; quy trình thật là annotator tự gán rồi bấm M44 Check, với lỗi
+  thật của người gán.
+- **Quyết định:** task trống 1 frame (val 25, Boston: 10 ô tô + 7 người đi bộ ≥ 60 % nhìn thấy trong 30 m), gán tối đa
+  25 phút, chấm `truoc`, bấm M44 Check, sửa tối đa 10 phút, chấm `sau`. `pilot_label_score.py` xếp mỗi cuboid
+  car/pedestrian thành đúng (dung sai như phần 1) / lệch (đúng class, cách ≤ 2 m) / sai-thừa, và mỗi vật cần gán
+  thành đúng / lệch / bỏ sót; lần `sau` đối chiếu cờ của tool với ảnh chụp `truoc` → độ chính xác và độ phủ của tool
+  trên nhãn người thật.
+- **Kiểm chứng (task 64):** chưa gán: 0/17, 17 bỏ sót; gán giả lập có 3 lệch, 1 sai class, 2 bỏ sót, 1 cuboid ma →
+  chấm đúng 11 đúng / 3 lệch / 3 bỏ sót / 2 sai-thừa; M44 Check gắn cờ 4, trong đó 3 thực sự chưa đúng, bắt 3/5.
+
 ## D-015 · Thiết kế pilot: chéo 2×2, giới hạn 20 phút, chấm tự động bằng nhãn gốc
 - **Người tham gia:** Thúy, Trọng, Duy, Tùng (tech lead không review).
 - **Thiết kế:** 2 bộ 5 frame có lỗi cài (A: val 10–14 Boston, 25 lỗi; B: val 60–64 Singapore, 18 lỗi; seed 0) –

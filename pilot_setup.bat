@@ -19,5 +19,8 @@ echo.
 echo Tao bo B (Singapore, 5 frame)...
 ".venv\Scripts\python.exe" scripts\cvat_create_task.py --nusc-root "%NUSC_ROOT%" --split val --start-frame 60 --max-frames 5 --labels noisy --seed 0 --name "PILOT B"
 echo.
-echo GHI LAI 2 so "task ..." o tren vao sheet pilot. KHONG mo thu muc out\cvat_tasks (co dap an).
+echo Tao task gan nhan (phan 2, 1 frame trong)...
+".venv\Scripts\python.exe" scripts\cvat_create_task.py --nusc-root "%NUSC_ROOT%" --split val --start-frame 25 --max-frames 1 --labels none --name "PILOT GAN NHAN"
+echo.
+echo GHI LAI 3 so "task ..." o tren vao sheet pilot. KHONG mo thu muc out\cvat_tasks (co dap an).
 pause
