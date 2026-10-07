@@ -14,7 +14,11 @@ Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do 
   - Kết quả ghi vào `qc`; `MISSING_3D` không có cuboid để gắn nên chỉ nằm trong báo cáo HTML, có link mở frame.
 - **Kiểm chứng:** task 3 frame: đọc ngược 86/86 cuboid khớp tuyệt đối, mỗi frame đủ 6 ảnh. Task 52 (10 frame,
   41 lỗi cài, 386 cuboid): `cvat_check.py` bắt 25/41 (61%), ghi `qc` cho 386 cuboid (49 bị gắn cờ) và đọc lại đúng
-  trên CVAT. **Chưa kiểm tra bằng mắt** cuboid nằm đúng trên point cloud trong giao diện CVAT 3D.
+  trên CVAT.
+- **Kiểm tra trên giao diện CVAT 3D (task 52, frame 1):** nhìn từ trên, cuboid ô tô nằm trên làn đường và song
+  song mép đường, cuboid người ở vỉa hè/góc giao lộ; chọn một người thì hình chiếu Side/Front cho hộp cao, hẹp
+  ôm đúng đám điểm. Bảng chi tiết hiện kích thước (vd ô tô 4,96 × 2,04 × 1,64 m), `visibility`, `qc`.
+  Chưa thử hết thao tác lọc theo `qc` trong hộp Filters (Attributes → label → qc) vì khung trình duyệt quá hẹp.
 
 ## D-011 · Chế độ "chỉ kiểm tra" (`scripts/check.py`) và ngưỡng ghép cặp khác class
 - **Bối cảnh:** `run_all.py` luôn cài lỗi giả nên chưa kiểm được nhãn thật. Chạy `check.py` trên nhãn gốc nuScenes
