@@ -87,6 +87,9 @@ python scripts\run_all.py --split val --max-frames 10 --out out\x   :: thử nha
 Nút chỉ đọc ID task/job từ địa chỉ trang rồi gọi dịch vụ trên máy bạn, không sửa gì CVAT – dùng được với CVAT
 của nhóm hay của BTC (dịch vụ đăng nhập CVAT bằng thông tin trong `.cvat.env`).
 
+Trang `http://localhost:8765` còn có nút **"Tạo task pilot (A + B)"** và ô **"Tạo task khác"** để tạo task CVAT 3D
+từ nuScenes chỉ bằng một cú bấm.
+
 ## Dùng với CVAT 3D
 
 CVAT 3D không có Issue / chế độ Review, nên tool ghi kết quả lên **từng cuboid**:

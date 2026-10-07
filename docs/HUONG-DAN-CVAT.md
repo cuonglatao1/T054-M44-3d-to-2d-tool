@@ -51,7 +51,10 @@ khác, bạn phải **được giao (assign) task/job** đó.
 
 ## 4. Tạo task trên CVAT của bạn
 
-Bấm đúp **`create_task.bat`**, trả lời 4 câu (Enter để lấy giá trị mặc định):
+**Cách dễ nhất:** trên trang `http://localhost:8765` (mục 3) có nút **"Tạo task pilot (A + B)"** và ô **"Tạo task
+khác"** (tên, từ frame, số frame, kiểu nhãn) → bấm **Tạo** → trang hiện link mở task khi xong.
+
+**Hoặc** bấm đúp **`create_task.bat`**, trả lời 4 câu (Enter để lấy giá trị mặc định):
 
 | Câu hỏi | Gợi ý |
 |---|---|

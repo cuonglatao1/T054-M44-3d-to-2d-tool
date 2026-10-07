@@ -23,12 +23,55 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 sys.path.insert(0, str(ROOT / 'scripts'))
 from cvat_check import check_task  # noqa: E402
+from cvat_create_task import create_nusc_task  # noqa: E402
 from m44 import cvat_io  # noqa: E402
+from m44.loader import load_frames_nusc  # noqa: E402
 
 PORT = int(os.environ.get('M44_PORT', 8765))
 RUNS: dict[int, dict] = {}            # task id -> {state, log, summary, error, started}
 RUNS_LOCK = threading.Lock()
-CHECK_LOCK = threading.Lock()         # one check at a time: YOLO shares the GPU / CPU
+CHECK_LOCK = threading.Lock()         # one check / task creation at a time: they share CPU, GPU and disk
+CREATES: dict[str, dict] = {}         # creation job id -> {state, log, results, error, title}
+# must stay identical to pilot_setup.bat so every reviewer gets the same frames and the same injected errors
+PILOT_SPECS = [{'name': 'PILOT A', 'start': 10, 'count': 5, 'labels': 'noisy', 'expect': 25},
+               {'name': 'PILOT B', 'start': 60, 'count': 5, 'labels': 'noisy', 'expect': 18}]
+
+
+def nusc_root() -> str:
+    return os.environ.get('NUSC_ROOT', str(ROOT / 'data' / 'nuscenes'))
+
+
+def existing_tasks(names: set[str]) -> list[dict]:
+    """Tasks created earlier from this machine (out/cvat_tasks/task_*/task.json) with one of these names."""
+    found = []
+    for p in sorted((ROOT / 'out' / 'cvat_tasks').glob('task_*/task.json')):
+        info = json.loads(p.read_text(encoding='utf-8'))
+        if info.get('name') in names:
+            found.append(info)
+    return found
+
+
+def start_create(title: str, specs: list[dict]) -> str:
+    job_id = datetime.now().strftime('%H%M%S%f')
+    job = CREATES[job_id] = {'state': 'running', 'log': [], 'results': [], 'error': None, 'title': title}
+
+    def work():
+        with CHECK_LOCK:
+            try:
+                for s in specs:
+                    job['log'].append(f"Đọc {s['count']} frame nuScenes (val, từ frame {s['start']})…")
+                    frames = load_frames_nusc(nusc_root(), 'val', max_frames=s['start'] + s['count'])[s['start']:]
+                    res = create_nusc_task(frames, s['name'], s['labels'], seed=s.get('seed', 0),
+                                           log=job['log'].append)
+                    job['results'].append({**res, 'expect': s.get('expect')})
+                job['state'] = 'done'
+            except BaseException as e:  # SystemExit from cvat_io carries a readable message
+                traceback.print_exc()
+                job['error'] = f'{type(e).__name__}: {e}'
+                job['state'] = 'error'
+
+    threading.Thread(target=work, daemon=True).start()
+    return job_id
 
 PAGE = """<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>{title}</title>
@@ -104,6 +147,12 @@ class Handler(BaseHTTPRequestHandler):
                 run = RUNS.get(int(q['task'][0]))
                 return self._send(json.dumps(run or {'state': 'unknown'}, ensure_ascii=False).encode('utf-8'),
                                   'application/json; charset=utf-8')
+            if url.path == '/create':
+                return self.create(q)
+            if url.path == '/cstatus':
+                job = CREATES.get(q['id'][0])
+                return self._send(json.dumps(job or {'state': 'unknown'}, ensure_ascii=False).encode('utf-8'),
+                                  'application/json; charset=utf-8')
             if url.path.startswith('/report/'):
                 return self.report(url.path)
             self._page('Không tìm thấy', '<p>Không có trang này.</p>', 404)
@@ -121,6 +170,16 @@ class Handler(BaseHTTPRequestHandler):
 <p><a class="btn" href="{html.escape(bookmarklet())}">M44 Check</a></p>
 <p>Cách dùng: mở một task hoặc job trên CVAT → bấm <b>M44 Check</b> trên thanh dấu trang → tool kiểm tra task đó,
 ghi cờ vào CVAT và mở danh sách lỗi. Không thấy thanh dấu trang: <code>Ctrl+Shift+B</code>.</p>
+<h2>Tạo task trên CVAT</h2>
+<p><a class="btn" href="/create?preset=pilot">Tạo task pilot (A + B)</a>
+&nbsp;tạo PILOT A (25 lỗi cài) và PILOT B (18 lỗi cài) – giống hệt máy các bạn khác.</p>
+<form action="/create" method="get" style="margin-top:12px">
+<b>Tạo task khác:</b> tên <input name="name" value="M44 task" size="14">
+· từ frame <input name="start" type="number" value="0" min="0" max="80" style="width:4em">
+· số frame <input name="count" type="number" value="10" min="1" max="81" style="width:4em">
+· nhãn <select name="labels"><option value="none">trống (tự gán)</option><option value="gt">nhãn gốc</option>
+<option value="noisy">có cài lỗi + đáp án</option></select>
+<button type="submit">Tạo</button></form>
 <h2>Các lần kiểm tra</h2>
 {'<table><tr><th>Task</th><th>Tên</th><th>Bắt đầu</th><th>Trạng thái</th><th></th></tr>' + rows + '</table>'
  if rows else '<p>Chưa có.</p>'}"""
@@ -150,6 +209,52 @@ async function poll() {{
 poll();
 </script>"""
         self._page(f'M44 – task {task_id}', body)
+
+    def create(self, q):
+        running = next((j for j in CREATES.values() if j['state'] == 'running'), None)
+        if running:
+            job_id = next(k for k, v in CREATES.items() if v is running)
+        else:
+            if q.get('preset', [''])[0] == 'pilot':
+                specs, title = PILOT_SPECS, 'Tạo task pilot A + B'
+                done = existing_tasks({s['name'] for s in specs})
+                if done and 'again' not in q:
+                    items = ''.join(f"<li>{html.escape(t['name'])}: <a href='{t['url']}' target='_blank'>task "
+                                    f"{t['task_id']}</a></li>" for t in done)
+                    return self._page('Đã có task pilot', f"""<h1>Máy này đã tạo task pilot</h1><ul>{items}</ul>
+<p>Dùng các task trên. Tạo lại sẽ ra task mới (trùng tên) – chỉ làm khi task cũ đã bị xoá hoặc hỏng.</p>
+<p><a href="/create?preset=pilot&again=1">Vẫn tạo lại</a> · <a href="/">Về trang chính</a></p>""")
+            else:
+                name = q.get('name', ['M44 task'])[0].strip() or 'M44 task'
+                start, count = int(q.get('start', ['0'])[0]), int(q.get('count', ['10'])[0])
+                labels = q.get('labels', ['none'])[0]
+                if labels not in ('none', 'gt', 'noisy') or not (0 <= start <= 80 and 1 <= count <= 81 - start):
+                    return self._page('Sai tham số', '<p class="err">Frame phải trong 0–80, nhãn none/gt/noisy.</p>', 400)
+                specs, title = [{'name': name, 'start': start, 'count': count, 'labels': labels}], f'Tạo task "{name}"'
+            job_id = start_create(title, specs)
+
+        body = f"""<h1 id="title">{html.escape(CREATES[job_id]['title'])}</h1>
+<p id="state">Đang tạo task, mỗi task khoảng 1 phút…</p><pre id="log"></pre><div id="result"></div>
+<script>
+function esc(s) {{ return String(s).replace(/[&<>"']/g, c => ({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}})[c]); }}
+async function poll() {{
+  const r = await (await fetch('/cstatus?id={job_id}')).json();
+  document.getElementById('log').textContent = (r.log || []).join('\\n');
+  if (r.state === 'running') {{ setTimeout(poll, 2000); return; }}
+  const s = document.getElementById('state');
+  if (r.state === 'error') {{ s.className = 'err'; s.textContent = 'Lỗi: ' + r.error + ' – chụp màn hình gửi tech lead.'; return; }}
+  s.textContent = 'Xong. Mở task trên CVAT:';
+  document.getElementById('result').innerHTML = '<ul>' + r.results.map(t => {{
+    let check = '';
+    if (t.expect != null) check = t.injected === t.expect
+      ? ` – <b style="color:#1a7f37">${{t.injected}} lỗi cài ✓ đúng</b>`
+      : ` – <b class="err">${{t.injected}} lỗi cài, phải là ${{t.expect}}: báo tech lead</b>`;
+    return `<li><b>${{esc(t.name)}}</b>: <a href="${{t.url}}" target="_blank">task ${{t.task_id}}</a>${{check}}</li>`;
+  }}).join('') + '</ul><p>Ghi các số task vào sheet. <a href="/">Về trang chính</a></p>';
+}}
+poll();
+</script>"""
+        self._page(CREATES[job_id]['title'], body)
 
     def report(self, path):
         parts = path.split('/', 3)  # ['', 'report', '<id>', 'rest']

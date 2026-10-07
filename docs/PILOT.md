@@ -31,9 +31,10 @@ Tech lead không review, chỉ chuẩn bị và tổng hợp.
 ## Chuẩn bị (mỗi người, làm trước buổi pilot)
 
 1. Cài tool, tạo `.cvat.env`, bật nút **M44 Check**: [HUONG-DAN-CVAT.md](HUONG-DAN-CVAT.md) mục 1–3.
-2. Bấm đúp **`pilot_setup.bat`** → tạo task **PILOT A** và **PILOT B** trên CVAT của bạn.
-   Kiểm tra dòng thông báo: bộ A phải là **`injected 25 errors`**, bộ B **`injected 18 errors`**. Khác → báo tech
-   lead (dữ liệu không giống mọi người).
+2. Mở trang **`http://localhost:8765`** (cửa sổ `m44_server.bat` đang chạy) → bấm nút **"Tạo task pilot (A + B)"**
+   → chờ ~2 phút. Trang hiện **PILOT A: 25 lỗi cài ✓ đúng** và **PILOT B: 18 lỗi cài ✓ đúng** kèm link mở task.
+   Hiện chữ đỏ (số khác) → báo tech lead. Lỡ bấm lại thì trang báo task đã có, không tạo trùng.
+   (Cách khác: bấm đúp `pilot_setup.bat`, phải thấy `injected 25 errors` và `injected 18 errors`.)
 3. Ghi 2 số **task id** vào sheet pilot.
 4. **Không mở thư mục `out\cvat_tasks`** – trong đó có đáp án.
 
