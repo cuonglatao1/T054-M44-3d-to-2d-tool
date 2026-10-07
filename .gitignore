@@ -1,5 +1,6 @@
 out/
 .venv/
+.cvat.env
 weights/
 scratch/
 data/

@@ -6,3 +6,5 @@ scipy
 pillow
 nuscenes-devkit
 ultralytics
+# CVAT integration (scripts/cvat_*.py); keep the major.minor of your CVAT server
+cvat-sdk==2.75.0

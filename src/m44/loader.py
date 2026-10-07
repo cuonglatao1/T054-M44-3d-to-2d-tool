@@ -33,8 +33,9 @@ def _pose(record) -> np.ndarray:
 
 
 def load_frames_nusc(nusc_root: str, split: str = 'val', version: str = 'v1.0-mini',
-                     max_frames: int | None = None) -> list[dict]:
-    """Frames of one split read directly from the nuScenes tables.
+                     max_frames: int | None = None, samples: set[str] | None = None) -> list[dict]:
+    """Frames of one split ('all' = every scene) read directly from the nuScenes tables;
+    `samples` keeps only those sample tokens.
 
     lidar2cam chains LiDAR -> ego (LiDAR time) -> global -> ego (camera time) -> camera, so the ego
     motion between the LiDAR sweep and each camera exposure is compensated (as mmdet3d infos do).
@@ -43,13 +44,15 @@ def load_frames_nusc(nusc_root: str, split: str = 'val', version: str = 'v1.0-mi
     from nuscenes.utils.splits import create_splits_scenes
 
     nusc = NuScenes(version=version, dataroot=str(nusc_root), verbose=False)
-    split_key = f'mini_{split}' if version.endswith('mini') else split
-    scenes = set(create_splits_scenes()[split_key])
+    if split == 'all':
+        scenes = {s['name'] for s in nusc.scene}
+    else:
+        scenes = set(create_splits_scenes()[f'mini_{split}' if version.endswith('mini') else split])
 
     frames = []
     for sample in nusc.sample:  # same order as mmdet3d infos, so frame N is the same frame in both
         scene = nusc.get('scene', sample['scene_token'])
-        if scene['name'] not in scenes:
+        if scene['name'] not in scenes or (samples is not None and sample['token'] not in samples):
             continue
         lidar_sd = nusc.get('sample_data', sample['data']['LIDAR_TOP'])
         lidar2global = _pose(nusc.get('ego_pose', lidar_sd['ego_pose_token'])) @ \
@@ -85,6 +88,7 @@ def load_frames_nusc(nusc_root: str, split: str = 'val', version: str = 'v1.0-mi
                 'visibility': int(ann['visibility_token']),
             })
         frames.append({'sample': sample['token'], 'night': 'night' in scene['description'].lower(),
+                       'lidar_path': str(nusc.get_sample_data_path(lidar_sd['token'])),
                        'cams': cams, 'boxes': boxes})
         if max_frames and len(frames) >= max_frames:
             break
@@ -95,7 +99,7 @@ def add_data_args(ap: argparse.ArgumentParser):
     """CLI flags shared by every script: nuScenes folder + split (default) or an mmdet3d info .pkl."""
     ap.add_argument('--nusc-root', default=os.environ.get('NUSC_ROOT', 'data/nuscenes'),
                     help='nuScenes folder containing samples/ and v1.0-mini/ (env NUSC_ROOT)')
-    ap.add_argument('--split', default='val', choices=['train', 'val'])
+    ap.add_argument('--split', default='val', choices=['train', 'val', 'all'])
     ap.add_argument('--version', default='v1.0-mini')
     ap.add_argument('--info', help='optional mmdet3d info .pkl instead of the nuScenes tables')
     ap.add_argument('--data-root', help='image root for --info (defaults to --nusc-root)')

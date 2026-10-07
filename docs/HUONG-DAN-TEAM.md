@@ -28,14 +28,14 @@ Tool làm việc đó tự động:
 | Báo cáo HTML + file CSV để chấm | ✅ Xong |
 | Chạy trên Windows, không cần GPU | ✅ Xong (`setup_windows.bat` + `run_demo.bat`) |
 | Chế độ "chỉ kiểm tra" nhãn thật (`scripts/check.py`) | ✅ Xong – đang kiểm được nhãn gốc nuScenes |
-| Tích hợp vào CVAT | ⏳ Chưa làm – CVAT 3D không hiển thị Issue, cần cách khác |
+| Tích hợp vào CVAT | ✅ Chạy được – tạo task 3D từ nuScenes, kiểm nhãn trong task, ghi cờ `qc` lên từng cuboid (README, mục *Dùng với CVAT 3D*) |
 | Đo baseline review tay / pilot | ⏳ **Cần cả nhóm** (mục 4) |
 
 **Kết quả hiện tại** (81 frame chưa dùng khi chỉnh): tool bắt được **63%** lỗi cài vào, tốt nhất với sai class
 (97%) và sai kích thước (90%); kém với xoay hướng (30%). Kém ở cảnh đêm, vật bị che, người đứng sát nhau.
 
-**Lưu ý:** tool hiện kiểm nhãn có sẵn của nuScenes. Kiểm nhãn nhóm mình gán trên CVAT cần thêm phần nối CVAT
-(đang làm).
+**Trên CVAT:** tool đọc cuboid trong task 3D, kiểm tra rồi gắn cờ `qc` lên từng cuboid nghi sai. Thử trên task có
+41 lỗi cài: bắt được 25 (61%). Reviewer mở job, lọc object có `qc` khác `OK` để xem.
 
 ## 3. Thử trên máy bạn
 

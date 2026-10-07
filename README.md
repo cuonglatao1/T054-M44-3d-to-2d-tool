@@ -74,6 +74,29 @@ python scripts\run_all.py --split val --max-frames 10 --out out\x   :: thử nha
 `check.py --frames-json file.json` kiểm nhãn xuất từ công cụ khác (cùng định dạng loader, xem
 [docs/json-formats.md](docs/json-formats.md)).
 
+## Dùng với CVAT 3D
+
+CVAT 3D không có Issue / chế độ Review, nên tool ghi kết quả vào **thuộc tính `qc` của từng cuboid**
+(`OK`, `LOW_IOU`, `SIZE_MISMATCH`, `CLASS_MISMATCH`, `NO_2D_MATCH`). Reviewer mở job, lọc object theo `qc` khác
+`OK`. `MISSING_3D` (không có cuboid để gắn) chỉ có trong báo cáo HTML, kèm link mở đúng frame trong CVAT.
+
+1. Copy `.cvat.env.example` thành `.cvat.env`, điền `CVAT_URL` và Personal Access Token (hoặc user/password).
+   File này không được commit.
+2. Tạo task từ nuScenes (point cloud + 6 ảnh camera mỗi frame; mỗi cuboid có thuộc tính `visibility` và `qc`):
+   ```bat
+   python scripts\cvat_create_task.py --split val --max-frames 10 --name "M44 pilot" --labels noisy
+   ```
+   `--labels gt` nạp nhãn gốc, `noisy` nạp nhãn có cài lỗi + đáp án `out\cvat_tasks\task_<id>\answer_key.json`
+   (**không đưa reviewer**), `none` để trống cho annotator tự gán.
+3. Sau khi annotator làm xong (hoặc bất cứ lúc nào): bấm đúp `cvat_check.bat` và nhập ID task, hoặc
+   ```bat
+   python scripts\cvat_check.py --task-id 52 [--answer-key out\cvat_tasks\task_52\answer_key.json] [--dry-run]
+   ```
+   Tool đọc cuboid hiện tại từ CVAT, kiểm tra, ghi `qc` ngược lại và mở báo cáo có nút "Mở trong CVAT".
+
+Annotator vẽ cuboid mới thì `visibility` mặc định `4` (thấy rõ) → tool kiểm tra cuboid đó đầy đủ; nên sửa
+`visibility` cho vật bị che để tránh báo nhầm.
+
 Tham số: `--nusc-root` (thư mục nuScenes, mặc định `data\nuscenes` hoặc `NUSC_ROOT`), `--split train|val`,
 `--max-frames N`, `--rate 0.3` (tỉ lệ cuboid bị cài lỗi), `--seed 1` (bộ lỗi khác), `--redetect` (chạy lại YOLO
 thay vì dùng cache `det_2d.json`), `--device cpu|0|auto`, `--cfg default` (ngưỡng chưa chỉnh).
@@ -103,8 +126,9 @@ python scripts\eval_seeds.py --split val --dets out\mini_val\det_2d.json --cfg c
 ## Cấu trúc
 
 ```
-src/m44/   loader · geometry · detect · match · inject · evaluate · report
-scripts/   check.py · run_all.py · calibrate.py · sweep.py · eval_seeds.py · prepare_nuscenes_mini.sh (chỉ WSL)
+src/m44/   loader · geometry · detect · match · inject · evaluate · report · cvat_io
+scripts/   check.py · cvat_create_task.py · cvat_check.py · run_all.py · calibrate.py · sweep.py · eval_seeds.py
+           prepare_nuscenes_mini.sh (chỉ WSL)
 configs/   tuned.json (cấu hình dùng thật) · calibrated_*.json · sweep*.json
 tests/     test_projection.py · test_loader_nusc.py
 docs/      HUONG-DAN-TEAM.md · demo.md · decision-log.md · json-formats.md

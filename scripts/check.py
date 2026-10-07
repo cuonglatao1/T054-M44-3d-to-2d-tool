@@ -25,8 +25,10 @@ def dump(obj, path):
     Path(path).write_text(json.dumps(obj, indent=1, ensure_ascii=False), encoding='utf-8')
 
 
-def run_check(frames, out_dir, cfg, weights='yolo11m.pt', device='auto', redetect=False, title=None):
-    """Detect (cached in out_dir/det_2d.json), check and write flags.json + report. Returns flags."""
+def run_check(frames, out_dir, cfg, weights='yolo11m.pt', device='auto', redetect=False, title=None,
+              links_fn=None):
+    """Detect (cached in out_dir/det_2d.json), check and write flags.json + report. Returns flags.
+    links_fn(flags) -> {flag_id: url} adds a "fix it here" link per flag to the report."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     det_path = out / 'det_2d.json'
@@ -52,7 +54,8 @@ def run_check(frames, out_dir, cfg, weights='yolo11m.pt', device='auto', redetec
         'Theo loại': ', '.join(f'{t} {n}' for t, n in by_type.most_common()) or '–',
     }
     dump(summary, out / 'summary.json')
-    build_report(frames, proj, dets, flags, out, summary, title=title)
+    build_report(frames, proj, dets, flags, out, summary, title=title,
+                 links=links_fn(flags) if links_fn else None)
     return flags
 
 

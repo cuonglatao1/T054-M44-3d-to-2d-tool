@@ -2,6 +2,20 @@
 
 Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do → hệ quả. Mới nhất ở trên cùng.
 
+## D-012 · Tích hợp CVAT 3D qua thuộc tính `qc` trên cuboid
+- **Bối cảnh:** CVAT 3D (v2.75) không hiển thị Issue: tab Issues chỉ có cho 2D
+  (`objects-side-bar.tsx`, điều kiện `is2D`) và task 3D chỉ có workspace `STANDARD3D`, không có Review.
+- **Quyết định:**
+  - Task tạo bằng SDK theo layout "Custom 2" của CVAT: `<index>_<sample token>/<…>.pcd` + 6 ảnh camera làm
+    related images. Tự ghi `.pcd` (x y z intensity) vì bộ đổi `.bin` của CVAT giả định 4 số/điểm (KITTI), còn
+    nuScenes 5 số/điểm. Tên frame chứa sample token → tìm lại calibration và ảnh trong nuScenes.
+  - Cuboid CVAT = [tâm khối x y z, rx ry rz, sx sy sz] trong hệ point cloud = hệ LiDAR → yaw = rz, kích thước = (dài,
+    rộng, cao). Mỗi label có thuộc tính `visibility` (để tool lọc vật bị che như với nuScenes) và `qc`.
+  - Kết quả ghi vào `qc`; `MISSING_3D` không có cuboid để gắn nên chỉ nằm trong báo cáo HTML, có link mở frame.
+- **Kiểm chứng:** task 3 frame: đọc ngược 86/86 cuboid khớp tuyệt đối, mỗi frame đủ 6 ảnh. Task 52 (10 frame,
+  41 lỗi cài, 386 cuboid): `cvat_check.py` bắt 25/41 (61%), ghi `qc` cho 386 cuboid (49 bị gắn cờ) và đọc lại đúng
+  trên CVAT. **Chưa kiểm tra bằng mắt** cuboid nằm đúng trên point cloud trong giao diện CVAT 3D.
+
 ## D-011 · Chế độ "chỉ kiểm tra" (`scripts/check.py`) và ngưỡng ghép cặp khác class
 - **Bối cảnh:** `run_all.py` luôn cài lỗi giả nên chưa kiểm được nhãn thật. Chạy `check.py` trên nhãn gốc nuScenes
   (val, 81 frame) ra 205 cảnh báo; xem 11 cảnh báo `CLASS_MISMATCH` thì gần như tất cả là **người đứng trước xe
