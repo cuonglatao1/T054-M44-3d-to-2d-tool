@@ -2,6 +2,17 @@
 
 Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do → hệ quả. Mới nhất ở trên cùng.
 
+## D-011 · Chế độ "chỉ kiểm tra" (`scripts/check.py`) và ngưỡng ghép cặp khác class
+- **Bối cảnh:** `run_all.py` luôn cài lỗi giả nên chưa kiểm được nhãn thật. Chạy `check.py` trên nhãn gốc nuScenes
+  (val, 81 frame) ra 205 cảnh báo; xem 11 cảnh báo `CLASS_MISMATCH` thì gần như tất cả là **người đứng trước xe
+  đỗ**: YOLO không thấy người, cuboid người bị ghép với box "car" của xe phía sau dù chỉ chồng lên một phần nhỏ.
+- **Quyết định:** cặp khác nhóm class chỉ được ghép khi IoU ≥ `mismatch_min_iou` = 0,3 (lỗi sai class thật thì
+  cuboid vẫn nằm khớp vật thể). Chọn 0,3 trên train: báo nhầm CLASS_MISMATCH 33 → 18, recall CLASS_SWAP giữ 98%;
+  0,5 bắt đầu mất lỗi thật (93%).
+- **Kết quả val:** báo động giả 2,53 → 2,48/frame (CLASS_MISMATCH 11 → 5); recall 62,9% → 63,1%.
+- **Bài học:** chạy chế độ kiểm tra trên nhãn thật và **nhìn ảnh** tìm ra kiểu báo nhầm mà số liệu tổng không
+  cho thấy – nên lặp lại việc này với nhãn của nhóm ở pilot.
+
 ## D-010 · Đọc nuScenes trực tiếp bằng nuscenes-devkit, bỏ phụ thuộc mmdet3d / WSL khi chạy tool
 - **Bối cảnh:** môi trường cũ (WSL + PyTorch CUDA + mmcv + mmdet3d, ~9 GB, nhiều lỗi phiên bản) chỉ cần mmdet3d để
   sinh file info `.pkl`. Thành viên không có nền tảng kỹ thuật không thể tự cài.

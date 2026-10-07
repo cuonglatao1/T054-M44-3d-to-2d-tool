@@ -29,10 +29,10 @@ Trên tập val nuScenes-mini (81 frame, **không** dùng khi chỉnh ngưỡng)
 | | Báo động giả / frame | Lỗi bắt được |
 |---|---|---|
 | Ngưỡng mặc định | 11,01 | 70,1% |
-| **Ngưỡng đã chỉnh (`configs/tuned.json`, mặc định của `run_all.py`)** | **2,53** | **62,9%** |
+| **Ngưỡng đã chỉnh (`configs/tuned.json`, mặc định của mọi script)** | **2,48** | **63,1%** |
 
-Theo loại lỗi: sai class 95%, sai kích thước 90%, lệch vị trí 48%, thiếu cuboid 45%, xoay hướng 30%.
-Cách ra con số và các giới hạn: [docs/decision-log.md](docs/decision-log.md) (D-008, D-009).
+Theo loại lỗi: sai class 97%, sai kích thước 90%, lệch vị trí 48%, thiếu cuboid 45%, xoay hướng 30%.
+Cách ra con số và các giới hạn: [docs/decision-log.md](docs/decision-log.md) (D-008, D-009, D-011).
 
 ## Cảnh báo
 
@@ -57,15 +57,22 @@ nuScenes ─► loader ─► gt_boxes ─► inject (cài lỗi có đáp án) 
 Mỗi lần chạy kiểm tra **hai lần**: trên GT sạch (đo báo động giả + reprojection error) và trên GT đã cài lỗi
 (đo tool bắt được bao nhiêu lỗi). Định dạng các file JSON: [docs/json-formats.md](docs/json-formats.md).
 
-> Hiện `run_all.py` luôn cài lỗi vào nhãn để đo tool. Chế độ "chỉ kiểm tra" nhãn thật (cho pilot tuần 6) chưa làm.
+## Hai chế độ
 
-## Dòng lệnh
+| Script | Làm gì | Dùng khi |
+|---|---|---|
+| `scripts\check.py` | **Kiểm nhãn thật**: chỉ gắn cờ + báo cáo, không đụng vào nhãn | Review nhãn, pilot |
+| `scripts\run_all.py` | **Đo tool**: cài lỗi giả có đáp án rồi xem tool bắt được bao nhiêu | Đánh giá, demo, chỉnh ngưỡng |
 
 ```bat
 .venv\Scripts\activate
-python scripts\run_all.py --split val --out out\mini_val            :: cả tập val (81 frame)
+python scripts\check.py --split val --out out\check_val             :: kiểm nhãn gốc nuScenes (81 frame)
+python scripts\run_all.py --split val --out out\mini_val            :: đo tool trên cả tập val
 python scripts\run_all.py --split val --max-frames 10 --out out\x   :: thử nhanh
 ```
+
+`check.py --frames-json file.json` kiểm nhãn xuất từ công cụ khác (cùng định dạng loader, xem
+[docs/json-formats.md](docs/json-formats.md)).
 
 Tham số: `--nusc-root` (thư mục nuScenes, mặc định `data\nuscenes` hoặc `NUSC_ROOT`), `--split train|val`,
 `--max-frames N`, `--rate 0.3` (tỉ lệ cuboid bị cài lỗi), `--seed 1` (bộ lỗi khác), `--redetect` (chạy lại YOLO
@@ -97,7 +104,7 @@ python scripts\eval_seeds.py --split val --dets out\mini_val\det_2d.json --cfg c
 
 ```
 src/m44/   loader · geometry · detect · match · inject · evaluate · report
-scripts/   run_all.py · calibrate.py · sweep.py · eval_seeds.py · prepare_nuscenes_mini.sh (chỉ WSL)
+scripts/   check.py · run_all.py · calibrate.py · sweep.py · eval_seeds.py · prepare_nuscenes_mini.sh (chỉ WSL)
 configs/   tuned.json (cấu hình dùng thật) · calibrated_*.json · sweep*.json
 tests/     test_projection.py · test_loader_nusc.py
 docs/      HUONG-DAN-TEAM.md · demo.md · decision-log.md · json-formats.md

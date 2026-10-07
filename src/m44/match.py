@@ -36,6 +36,9 @@ DEFAULT_CFG = {
     'no_match_min_height_px': 25.0,  # NO_2D_MATCH only for cuboids at least this tall
     'missing_min_height_px': 25.0,   # MISSING_3D only for detections at least this tall
     'skip_night': False,     # no NO_2D_MATCH / MISSING_3D on night scenes (detector unreliable)
+    # class-incompatible pairs need at least this IoU to be matched at all: a real class error sits on the
+    # object (high IoU), a pedestrian in front of a parked car only overlaps the car's detection a little
+    'mismatch_min_iou': 0.1,
     # {cls: {"h": [lo, hi], "w": [lo, hi]}} bounds on log(projected/detected) height and width of a
     # matched pair, from clean-GT percentiles (scripts/calibrate.py). Catches wrong size / heading
     # that IoU misses. Empty = disabled.
@@ -103,13 +106,16 @@ def check(proj: list[dict], dets: list[dict], cfg: dict | None = None) -> tuple[
         if P and D:
             score = np.zeros((len(P), len(D)))
             ious = np.zeros_like(score)
+            allowed = np.zeros_like(score, dtype=bool)
             for i, p in enumerate(P):
                 for j, d in enumerate(D):
                     ious[i, j] = iou(p['bbox'], d['bbox'])
-                    score[i, j] = ious[i, j] + (0.3 if d['cls'] in COMPATIBLE[p['cls']] else 0.0)
+                    compatible = d['cls'] in COMPATIBLE[p['cls']]
+                    allowed[i, j] = ious[i, j] >= (cfg['match_min_iou'] if compatible else cfg['mismatch_min_iou'])
+                    score[i, j] = ious[i, j] + (0.3 if compatible else 0.0) if allowed[i, j] else -1.0
             rows, cols = linear_sum_assignment(-score)
             for i, j in zip(rows, cols):
-                if ious[i, j] < cfg['match_min_iou']:
+                if not allowed[i, j]:
                     continue
                 p, d = P[i], D[j]
                 matched_p.add(i)

@@ -26,7 +26,9 @@ def _draw_cuboid(draw, corners_2d, color, width):
             draw.line([tuple(corners_2d[a]), tuple(corners_2d[b])], fill=color, width=width)
 
 
-def build_report(frames, proj, dets, flags, out_dir, summary: dict | None = None):
+def build_report(frames, proj, dets, flags, out_dir, summary: dict | None = None, title: str | None = None,
+                 links: dict | None = None):
+    """links: optional {flag_id: url}, e.g. the CVAT frame where the reviewer fixes the cuboid."""
     out = Path(out_dir)
     (out / 'vis').mkdir(parents=True, exist_ok=True)
     (out / 'flags').mkdir(parents=True, exist_ok=True)
@@ -79,11 +81,19 @@ def build_report(frames, proj, dets, flags, out_dir, summary: dict | None = None
                         f['cls_3d'] or '', f['cls_2d'] or '', f['iou'] if f['iou'] is not None else '',
                         f"flags/{f['flag_id']}.jpg", '', ''])
 
+    links = links or {}
+
+    def open_cell(f):
+        url = links.get(f['flag_id'])
+        return f"<td><a href='{html.escape(url)}' target='_blank'>Mở trong CVAT</a></td>" if url else ''
+
     rows = '\n'.join(
         f"<tr><td>{f['flag_id']}</td><td><img src='flags/{f['flag_id']}.jpg'></td>"
         f"<td><b>{f['type']}</b><br>{html.escape(FLAG_TEXT[f['type']])}</td><td>{f['cam']}</td>"
-        f"<td>{f['cls_3d'] or '–'} / {f['cls_2d'] or '–'}</td><td>{f['iou'] if f['iou'] is not None else '–'}</td></tr>"
+        f"<td>{f['cls_3d'] or '–'} / {f['cls_2d'] or '–'}</td><td>{f['iou'] if f['iou'] is not None else '–'}</td>"
+        f"{open_cell(f)}</tr>"
         for f in flags)
+    link_th = '<th>Sửa</th>' if links else ''
     cams = '\n'.join(f"<figure><a href='vis/{n}'><img src='vis/{n}'></a><figcaption>{c} – {k} cảnh báo"
                      f"</figcaption></figure>" for c, n, k in vis_files)
     summ = ''
@@ -98,12 +108,12 @@ table{{border-collapse:collapse;margin:8px 0}}td,th{{border:1px solid #ccc;paddi
 .grid{{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}}
 figure{{margin:0}}figure img{{width:100%}}td img{{max-width:360px}}
 .legend span{{display:inline-block;margin-right:16px}}</style></head><body>
-<h1>M44 – Báo cáo kiểm tra nhất quán 2D–3D</h1>
+<h1>{html.escape(title or 'M44 – Báo cáo kiểm tra nhất quán 2D–3D')}</h1>
 <p class="legend"><span style="color:#28c850">■ cuboid ổn</span><span style="color:#eb2828">■ cuboid bị cảnh báo</span>
 <span style="color:#3c8cff">■ vật thể YOLO thấy</span><span style="color:#ff9600">■ vật thể chưa có cuboid</span></p>
 {summ}
 <h2>Cảnh báo ({len(flags)})</h2>
 <p>Chấm từng dòng trong file <code>flags_for_grading.csv</code>: cảnh báo này <b>Đúng</b> hay <b>Nhầm</b>?</p>
-<table><tr><th>ID</th><th>Ảnh</th><th>Loại</th><th>Camera</th><th>Class 3D / 2D</th><th>IoU</th></tr>
+<table><tr><th>ID</th><th>Ảnh</th><th>Loại</th><th>Camera</th><th>Class 3D / 2D</th><th>IoU</th>{link_th}</tr>
 {rows}</table>
 <h2>6 camera</h2><div class="grid">{cams}</div></body></html>""", encoding='utf-8')

@@ -27,12 +27,15 @@ Tool làm việc đó tự động:
 | Chỉnh ngưỡng để bớt báo nhầm | ✅ Xong – báo nhầm giảm từ 11 xuống 2,5 cảnh báo/frame |
 | Báo cáo HTML + file CSV để chấm | ✅ Xong |
 | Chạy trên Windows, không cần GPU | ✅ Xong (`setup_windows.bat` + `run_demo.bat`) |
-| Chế độ "chỉ kiểm tra" nhãn thật (cho pilot) | ⏳ Chưa làm |
+| Chế độ "chỉ kiểm tra" nhãn thật (`scripts/check.py`) | ✅ Xong – đang kiểm được nhãn gốc nuScenes |
 | Tích hợp vào CVAT | ⏳ Chưa làm – CVAT 3D không hiển thị Issue, cần cách khác |
 | Đo baseline review tay / pilot | ⏳ **Cần cả nhóm** (mục 4) |
 
-**Kết quả hiện tại** (81 frame chưa dùng khi chỉnh): tool bắt được **62,9%** lỗi cài vào, tốt nhất với sai class
-(95%) và sai kích thước (90%); kém với xoay hướng (30%). Kém ở cảnh đêm, vật bị che, người đứng sát nhau.
+**Kết quả hiện tại** (81 frame chưa dùng khi chỉnh): tool bắt được **63%** lỗi cài vào, tốt nhất với sai class
+(97%) và sai kích thước (90%); kém với xoay hướng (30%). Kém ở cảnh đêm, vật bị che, người đứng sát nhau.
+
+**Lưu ý:** tool hiện kiểm nhãn có sẵn của nuScenes. Kiểm nhãn nhóm mình gán trên CVAT cần thêm phần nối CVAT
+(đang làm).
 
 ## 3. Thử trên máy bạn
 
