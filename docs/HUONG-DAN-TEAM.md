@@ -35,8 +35,11 @@ Tool làm việc đó tự động:
 (97%) và sai kích thước (90%); kém với xoay hướng (30%). Kém ở cảnh đêm, vật bị che, người đứng sát nhau.
 
 **Trên CVAT:** tool đọc cuboid trong task 3D, kiểm tra rồi gắn cờ `qc` lên từng cuboid nghi sai. Thử trên task có
-41 lỗi cài: bắt được 25 (61%). Reviewer mở job, bấm **Filters → Add rule → Score `<` 1 → Submit** để chỉ hiện
-cuboid bị gắn cờ, rồi xem lý do ở dòng `qc` trong DETAILS.
+41 lỗi cài: bắt được 25 (61%).
+
+**Reviewer làm thế nào:** mở báo cáo HTML của task, bấm **"Mở trong CVAT"** ở từng dòng → CVAT mở đúng frame và
+chỉ hiện đúng cuboid bị cảnh báo → sửa → Save → quay lại báo cáo dòng tiếp theo. (Cách khác: trong CVAT bấm
+Filters → Add rule → Score `<` 1 → Submit để hiện mọi cuboid bị gắn cờ.)
 
 ## 3. Thử trên máy bạn
 

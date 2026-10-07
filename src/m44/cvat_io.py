@@ -205,7 +205,8 @@ def write_qc(task, shapes: dict, flags: list[dict]) -> int:
 
 
 def frame_links(task, flags: list[dict], frames: list[dict]) -> dict[str, str]:
-    """flag_id -> URL opening the job and frame that contains it in the CVAT UI."""
+    """flag_id -> URL opening the job at the flag's frame. For a flagged cuboid the URL also carries
+    `type=shape&serverID=<id>`, which CVAT turns into a filter showing only that cuboid."""
     url = os.environ.get('CVAT_URL', 'http://localhost:8080').rstrip('/')
     jobs = sorted(task.get_jobs(), key=lambda j: j.start_frame)
     cvat_frame = {f['sample']: f['cvat_frame'] for f in frames}
@@ -213,5 +214,8 @@ def frame_links(task, flags: list[dict], frames: list[dict]) -> dict[str, str]:
     for fl in flags:
         n = cvat_frame[fl['sample']]
         job = next(j for j in jobs if j.start_frame <= n <= j.stop_frame)
-        links[fl['flag_id']] = f'{url}/tasks/{task.id}/jobs/{job.id}?frame={n}'
+        link = f'{url}/tasks/{task.id}/jobs/{job.id}?frame={n}'
+        if fl['box_id']:  # 'cvat<server id>'
+            link += f"&type=shape&serverID={fl['box_id'][4:]}"
+        links[fl['flag_id']] = link
     return links

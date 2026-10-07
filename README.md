@@ -80,8 +80,13 @@ CVAT 3D không có Issue / chế độ Review, nên tool ghi kết quả lên **
 - thuộc tính `qc` = loại cảnh báo (`OK`, `LOW_IOU`, `SIZE_MISMATCH`, `CLASS_MISMATCH`, `NO_2D_MATCH`) – xem trong DETAILS;
 - **Score** = 0 nếu bị gắn cờ, 1 nếu OK.
 
-**Reviewer lọc:** Filters → Add rule → **Score** `<` `1` → Submit (một luật cho mọi label). Không nên lọc bằng
-`qc != OK`: thuộc tính đó gắn theo label, cuboid label khác không có nó nên CVAT coi là "khác OK" và vẫn hiện ra.
+**Cách reviewer làm việc (dễ nhất):** mở báo cáo HTML, đi lần lượt từng dòng, bấm **"Mở trong CVAT"** → CVAT mở
+đúng frame và **chỉ hiện cuboid bị cảnh báo** (link có `type=shape&serverID=…`, tính năng có sẵn của CVAT) → sửa →
+Save → quay lại báo cáo. Muốn xem lại mọi object trong frame: Filters → Clear filters.
+
+**Hoặc lọc trong CVAT:** Filters → Add rule → **Score** `<` `1` → Submit (một luật cho mọi label; lần sau chọn
+lại trong "Recently used"). Không lọc bằng `qc != OK`: thuộc tính đó gắn theo label, cuboid label khác không có
+nó nên CVAT coi là "khác OK" và vẫn hiện ra.
 `MISSING_3D` (không có cuboid để gắn) chỉ có trong báo cáo HTML, kèm link mở đúng frame trong CVAT.
 
 1. Copy `.cvat.env.example` thành `.cvat.env`, điền `CVAT_URL` và Personal Access Token (hoặc user/password).
