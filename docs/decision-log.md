@@ -2,6 +2,18 @@
 
 Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do → hệ quả. Mới nhất ở trên cùng.
 
+## D-013 · Nút "M44 Check" = bookmarklet + dịch vụ cục bộ, không sửa CVAT
+- **Bối cảnh:** người dùng muốn "label xong bấm một nút là tool kiểm tra và hiện danh sách lỗi".
+- **Phương án loại:** thêm nút vào giao diện CVAT (React) – phải build lại image `cvat_ui` (ổ C còn ~12 GB), chỉ
+  chạy trên CVAT tự host, không dùng được với CVAT chung của nhóm/BTC, phải sửa lại khi nâng cấp CVAT.
+  Webhook khi job "completed" – CVAT đẩy webhook qua proxy smokescreen chặn địa chỉ nội bộ, phải cấu hình
+  `SMOKESCREEN_OPTS`; và không mở được danh sách lỗi cho người bấm.
+- **Quyết định:** `scripts/m44_server.py` (chỉ thư viện chuẩn) chạy ở `localhost:8765`; bookmarklet đọc ID
+  task/job từ URL CVAT và mở `/check?task=…`; trang tiến trình hỏi `/status` mỗi 2 giây rồi chuyển sang
+  `/report/<task>/`. Mỗi lúc chỉ một lần kiểm tra (YOLO dùng chung GPU/CPU).
+- **Kiểm chứng:** `/check?job=58` → nhận ra task 52 → kiểm tra → tự mở báo cáo (~10 giây khi YOLO đã cache), ảnh
+  hiển thị qua HTTP; mã bookmarklet chạy trên trang `/tasks/52/jobs/58` tạo đúng `…/check?task=52`.
+
 ## D-012 · Tích hợp CVAT 3D qua thuộc tính `qc` trên cuboid
 - **Bối cảnh:** CVAT 3D (v2.75) không hiển thị Issue: tab Issues chỉ có cho 2D
   (`objects-side-bar.tsx`, điều kiện `is2D`) và task 3D chỉ có workspace `STANDARD3D`, không có Review.

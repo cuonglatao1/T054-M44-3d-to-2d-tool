@@ -37,6 +37,9 @@ Tool làm việc đó tự động:
 **Trên CVAT:** tool đọc cuboid trong task 3D, kiểm tra rồi gắn cờ `qc` lên từng cuboid nghi sai. Thử trên task có
 41 lỗi cài: bắt được 25 (61%).
 
+**Kiểm tra bằng một nút:** bật `m44_server.bat`, kéo nút **M44 Check** lên thanh dấu trang (một lần). Mở task/job
+trên CVAT → bấm **M44 Check** → danh sách lỗi tự mở ra. Chi tiết: README, mục *Nút "M44 Check"*.
+
 **Reviewer làm thế nào:** mở báo cáo HTML của task, bấm **"Mở trong CVAT"** ở từng dòng → CVAT mở đúng frame và
 chỉ hiện đúng cuboid bị cảnh báo → sửa → Save → quay lại báo cáo dòng tiếp theo. (Cách khác: trong CVAT bấm
 Filters → Add rule → Score `<` 1 → Submit để hiện mọi cuboid bị gắn cờ.)

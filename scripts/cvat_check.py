@@ -44,6 +44,43 @@ def score_against_key(frames, flags, base, key_path):
     return evaluate(mapped, key['injected'], clean_proj)
 
 
+def check_task(task_id: int, out: Path | None = None, nusc_root: str | None = None, version: str = 'v1.0-mini',
+               cfg: dict | None = None, dry_run: bool = False, answer_key: str | None = None,
+               device: str = 'auto', log=print) -> dict:
+    """Check one CVAT task end to end (also used by scripts/m44_server.py). Returns a short summary."""
+    cvat_io.load_env(ROOT / '.cvat.env')
+    nusc_root = nusc_root or os.environ.get('NUSC_ROOT', 'data/nuscenes')
+    out = Path(out or ROOT / 'out' / f'cvat_check_{task_id}')
+    cfg = load_cfg(str(TUNED_CFG)) if cfg is None else cfg
+
+    with cvat_io.connect() as client:
+        task = client.tasks.retrieve(task_id)
+        log(f'Đọc task {task.id} "{task.name}" từ CVAT…')
+        tokens = {cvat_io.sample_of(fr.name) for fr in task.get_frames_info()}
+        base = {f['sample']: f for f in load_frames_nusc(nusc_root, 'all', version, samples=tokens)}
+        frames, shapes = cvat_io.read_frames(task, base)
+        log(f'{len(frames)} frame, {len(shapes)} cuboid. Đang chạy YOLO và kiểm tra…')
+
+        flags = run_check(frames, out, cfg, device=device, title=f'M44 – CVAT task {task.id}: {task.name}',
+                          links_fn=lambda fl: cvat_io.frame_links(task, fl, frames))
+        flagged = len({f['box_id'] for f in flags if f['box_id']})
+        log(f'{len(flags)} cảnh báo trên {flagged} cuboid.')
+
+        if not dry_run:
+            cvat_io.write_qc(task, shapes, flags)
+            log('Đã ghi cờ qc / Score vào CVAT.')
+        summary = {'task_id': task.id, 'name': task.name, 'frames': len(frames), 'cuboids': len(shapes),
+                   'flags': len(flags), 'flagged_cuboids': flagged, 'report': str(out / 'index.html')}
+
+    if answer_key:
+        m = score_against_key(frames, flags, base, answer_key)
+        log(f"Đáp án: bắt được {m['caught']}/{m['injected']} lỗi cài ({m['recall']:.0%}); "
+            f"{m['flags_unexplained']} cảnh báo khác.")
+        (out / 'score.json').write_text(json.dumps(m, indent=1), encoding='utf-8')
+        summary['recall'] = m['recall']
+    return summary
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--task-id', type=int, required=True)
@@ -56,32 +93,10 @@ def main():
     ap.add_argument('--device', default='auto')
     args = ap.parse_args()
 
-    cvat_io.load_env(ROOT / '.cvat.env')
-    nusc_root = args.nusc_root or os.environ.get('NUSC_ROOT', 'data/nuscenes')
-    out = Path(args.out or f'out/cvat_check_{args.task_id}')
     cfg = {} if args.cfg == 'default' else load_cfg(args.cfg)
-
-    with cvat_io.connect() as client:
-        task = client.tasks.retrieve(args.task_id)
-        tokens = {cvat_io.sample_of(fr.name) for fr in task.get_frames_info()}
-        base = {f['sample']: f for f in load_frames_nusc(nusc_root, 'all', args.version, samples=tokens)}
-        frames, shapes = cvat_io.read_frames(task, base)
-        print(f'task {task.id} "{task.name}": {len(frames)} frames, {len(shapes)} cuboids')
-
-        flags = run_check(frames, out, cfg, device=args.device, title=f'M44 – CVAT task {task.id}: {task.name}',
-                          links_fn=lambda fl: cvat_io.frame_links(task, fl, frames))
-        flagged = len({f['box_id'] for f in flags if f['box_id']})
-        print(f'{len(flags)} flags on {flagged} cuboids -> {out / "index.html"}')
-
-        if not args.dry_run:
-            n = cvat_io.write_qc(task, shapes, flags)
-            print(f'qc attribute written: {n} cuboids flagged, {len(shapes) - n} OK')
-
-    if args.answer_key:
-        m = score_against_key(frames, flags, base, args.answer_key)
-        print(f"answer key: caught {m['caught']}/{m['injected']} injected errors ({m['recall']:.0%}); "
-              f"{m['flags_unexplained']} other flags")
-        (out / 'score.json').write_text(json.dumps(m, indent=1), encoding='utf-8')
+    summary = check_task(args.task_id, args.out, args.nusc_root, args.version, cfg, args.dry_run,
+                         args.answer_key, args.device)
+    print(f"report: {summary['report']}")
 
 
 if __name__ == '__main__':

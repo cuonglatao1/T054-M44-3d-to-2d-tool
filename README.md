@@ -74,6 +74,17 @@ python scripts\run_all.py --split val --max-frames 10 --out out\x   :: thử nha
 `check.py --frames-json file.json` kiểm nhãn xuất từ công cụ khác (cùng định dạng loader, xem
 [docs/json-formats.md](docs/json-formats.md)).
 
+## Nút "M44 Check" (dễ nhất)
+
+1. Bấm đúp **`m44_server.bat`** (giữ cửa sổ mở) → trang `http://localhost:8765` tự mở.
+2. Kéo nút **M44 Check** trên trang đó lên **thanh dấu trang** của trình duyệt (một lần; `Ctrl+Shift+B` nếu
+   chưa thấy thanh dấu trang).
+3. Mở một task hoặc job 3D trên CVAT → bấm **M44 Check** → tab mới hiện tiến trình rồi tự chuyển sang **danh
+   sách lỗi**; cờ `qc`/Score đã được ghi vào CVAT; mỗi dòng có nút mở đúng cuboid trong CVAT.
+
+Nút chỉ đọc ID task/job từ địa chỉ trang rồi gọi dịch vụ trên máy bạn, không sửa gì CVAT – dùng được với CVAT
+của nhóm hay của BTC (dịch vụ đăng nhập CVAT bằng thông tin trong `.cvat.env`).
+
 ## Dùng với CVAT 3D
 
 CVAT 3D không có Issue / chế độ Review, nên tool ghi kết quả lên **từng cuboid**:
