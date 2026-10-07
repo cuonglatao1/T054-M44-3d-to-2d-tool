@@ -7,3 +7,6 @@ data/
 *.pt
 *.pth
 __pycache__/
+# technical report: kept local only
+report/
+docs/BaoCao_*.pdf
