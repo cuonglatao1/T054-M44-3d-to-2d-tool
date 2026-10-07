@@ -2,6 +2,17 @@
 
 Mỗi quyết định kỹ thuật: bối cảnh → quyết định → lý do → hệ quả. Mới nhất ở trên cùng.
 
+## D-015 · Thiết kế pilot: chéo 2×2, giới hạn 20 phút, chấm tự động bằng nhãn gốc
+- **Người tham gia:** Thúy, Trọng, Duy, Tùng (tech lead không review).
+- **Thiết kế:** 2 bộ 5 frame có lỗi cài (A: val 10–14 Boston, 25 lỗi; B: val 60–64 Singapore, 18 lỗi; seed 0) –
+  chưa dùng trong task 52/53. Mỗi người làm mỗi bộ một lần, một lượt tay một lượt tool, thứ tự đảo chéo để trung
+  hoà khác biệt tay nghề và độ khó dữ liệu. Mỗi lượt tối đa 20 phút → chỉ số chính: lỗi sửa được / phút.
+- **Chấm:** `pilot_score.py` so cuboid sau review với nhãn gốc (khớp 1–1, tâm ≤ 0,7 m, cạnh ±25 %, hướng ±20°,
+  bỏ qua lật 180°): lỗi cài → đã sửa / chưa; cuboid vốn đúng → còn đúng / bị làm hỏng. Mỗi máy tự tạo task
+  bằng `pilot_setup.bat`; dữ liệu giống nhau kiểm bằng số lỗi cài (25 / 18).
+- **Kiểm chứng bộ chấm:** task 56/57 trên CVAT local – không sửa gì: 0/25, 0/18, làm hỏng 0; đưa nhãn về nhãn gốc:
+  25/25, 18/18, làm hỏng 0.
+
 ## D-014 · Mỗi người dùng CVAT local của mình
 - **Bối cảnh:** nhóm chốt mỗi người chạy CVAT local; tool phải chịu được CVAT khác phiên bản, label đặt tên khác,
   task thiếu thuộc tính `qc`/`visibility`, và báo rõ khi task không tạo từ tool.

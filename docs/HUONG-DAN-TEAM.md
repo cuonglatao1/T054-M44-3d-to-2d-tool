@@ -80,6 +80,9 @@ Kết quả của bạn = **độ chính xác của tool khi người thật ki�
 - Giữ `docs/decision-log.md` cập nhật khi nhóm chốt quyết định mới.
 - Chuẩn bị slide + video demo theo [docs/demo.md](demo.md).
 
+### Pilot (Thúy, Trọng, Duy, Tùng)
+Làm theo [PILOT.md](PILOT.md): mỗi người 2 lượt × 20 phút (một lượt review tay, một lượt có tool), chấm tự động.
+
 ### Cả nhóm – đo baseline (tuần 4) và pilot (tuần 6)
 1. Mỗi người review ~20 frame **bằng tay** (không dùng tool), bấm giờ.
 2. Ghi vào sheet theo mẫu `templates/baseline_review.csv`: frame, người review, thời gian, số lỗi tìm được.

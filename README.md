@@ -10,7 +10,7 @@ phát hiện trên ảnh, rồi báo các chỗ không nhất quán để review
 
 **Mới vào nhóm?** Đọc [docs/HUONG-DAN-TEAM.md](docs/HUONG-DAN-TEAM.md) – tool làm gì, đã làm đến đâu, ai làm gì tiếp.
 **Dùng với CVAT** (cài, đăng nhập bằng token, nút M44 Check, quy trình annotator/reviewer):
-[docs/HUONG-DAN-CVAT.md](docs/HUONG-DAN-CVAT.md).
+[docs/HUONG-DAN-CVAT.md](docs/HUONG-DAN-CVAT.md). **Pilot tuần 6:** [docs/PILOT.md](docs/PILOT.md).
 
 ## Bắt đầu nhanh (Windows, không cần GPU)
 
