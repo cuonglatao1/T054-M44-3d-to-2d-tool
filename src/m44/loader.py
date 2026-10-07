@@ -104,12 +104,17 @@ def add_data_args(ap: argparse.ArgumentParser):
     ap.add_argument('--info', help='optional mmdet3d info .pkl instead of the nuScenes tables')
     ap.add_argument('--data-root', help='image root for --info (defaults to --nusc-root)')
     ap.add_argument('--max-frames', type=int)
+    ap.add_argument('--start-frame', type=int, default=0, help='skip the first N frames of the split')
 
 
 def frames_from_args(args) -> list[dict]:
+    start = getattr(args, 'start_frame', 0) or 0
+    stop = start + args.max_frames if args.max_frames else None
     if args.info:
-        return load_frames(args.info, args.data_root or args.nusc_root, args.max_frames)
-    return load_frames_nusc(args.nusc_root, args.split, args.version, args.max_frames)
+        frames = load_frames(args.info, args.data_root or args.nusc_root, stop)
+    else:
+        frames = load_frames_nusc(args.nusc_root, args.split, args.version, stop)
+    return frames[start:]
 
 
 def _resolve(data_root: Path, rel: str, cam: str) -> str:
